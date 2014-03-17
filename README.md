@@ -1,4 +1,4 @@
-crate
-=====
+ControlRoom
+===========
 
-Modulare DAQ Crate Interface
+Modulare DAQ API and control interface
