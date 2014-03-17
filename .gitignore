@@ -11,3 +11,20 @@
 *.lai
 *.la
 *.a
+
+# build trees
+DEBUG/*
+BUILD/*
+RELEASE/*
+
+# cmake
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
+# vim 
+~*
+*.swp
+*.swo
