@@ -1,7 +1,7 @@
 # CMake project file for CtrlRoom v0.1
 
 cmake_minimum_required (VERSION 2.6)
-project (CtrlRoom)
+project (ctrlroom)
 
 ## make sure that the default is RELEASE
 if (NOT CMAKE_BUILD_TYPE)
@@ -27,8 +27,8 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 include_directories(${PROJECT_SOURCE_DIR}
                     ${Boost_INCLUDE_DIRS})
 
-add_subdirectory(CtrlRoom/util)
+add_subdirectory(ctrlroom/util)
 
-add_library(CtrlRoom SHARED CtrlRoom/dummy.cpp)
-target_link_libraries(CtrlRoom util
+add_library(ctrlroom SHARED ctrlroom/dummy.cpp)
+target_link_libraries(ctrlroom util
                       ${Boost_LIBRARIES})
