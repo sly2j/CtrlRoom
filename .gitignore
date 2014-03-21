@@ -28,3 +28,6 @@ install_manifest.txt
 ~*
 *.swp
 *.swo
+
+# temporary includes
+tmpincludes
