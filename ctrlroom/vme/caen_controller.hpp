@@ -2,6 +2,7 @@
 #define CTRLROOM_VME_CAEN_CONTROLLER_LOADED
 
 #include <ctrlroom/controller.hpp>
+#include <ctrlroom/configuration.hpp>
 #include <CAENVMElib.h>
 #include <cstddef>
 #include <string>
@@ -9,20 +10,34 @@
 namespace ctrlroom {
     namespace vme {
         class caen_controller
-            : controller<caen_controller>
-        {
-            public:
-                typedef controller<caen_controller> base_type;
+            : controller<caen_controller> {
+                public:
+                    typedef controller<caen_controller> base_type;
 
-                controller(const std::string& name,
-                        const CVBoardTypes model)
-                    : base_type(name)
-                    , model_ {model}
+                    caen_controller(
+                            const std::string identifier,
+                            const ptree& settings)
+                        : base_type(identifier)
+                        , conf {identifier, settings} {
+                        }
 
 
-            private:
-                int32_t handle_;
-                CVBoardTypes model_;
+                    void process_settings() {
+
+                    }
+
+
+                    
+
+                protected:
+                    void init
+
+                private:
+                    process_conf
+
+                    int32_t handle_;
+                    configuration conf_;
+                    CVBoardTypes model_;
         };
     }
 }
