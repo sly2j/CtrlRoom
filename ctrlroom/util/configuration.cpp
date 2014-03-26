@@ -1,8 +1,11 @@
-#include <ctrlroom/util/configuration.hpp>
+#include "configuration.hpp"
+
 #include <ctrlroom/util/logger.hpp>
 
 using namespace ctrlroom;
 
+using boost::property_tree::ptree_bad_path;
+using boost::property_tree::ptree_error;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // class configuration
@@ -18,17 +21,17 @@ void configuration::load(
         const ptree& in_conf) {
     try {
 
-        settings_ = settings.get_child(settings_path_);
+        settings_ = in_conf.get_child(settings_path_);
         LOG_INFO(settings_path_, "Loading settings");
 
-        auto model = settings.get_optional<std::string>(MODEL_KEY);
+        auto model = in_conf.get_optional<std::string>(MODEL_KEY);
         if (!model) {
             throw configuration_error(
                     "key 'model' has to be set in " 
                     + settings_path_);
         }
-        defaults_path_ = DEFAULTS_KEY + "." + *model;
-        auto def = settings.get_child_optional(defaults_path_);
+        defaults_path_ = std::string(DEFAULTS_KEY) + "." + *model;
+        auto def = in_conf.get_child_optional(defaults_path_);
         if (def) {
             LOG_INFO(settings_path_, *model + " defaults found.");
             defaults_ = *def;
@@ -36,8 +39,6 @@ void configuration::load(
             LOG_INFO(settings_path_, 
                     "No default settings provided for this board.");
         }
-
-        derived().process_settings();
 
     } catch (ptree_bad_path& e) {
         throw path_error(e.path<std::string>());
@@ -51,7 +52,7 @@ void configuration::save(
         ptree& out_conf) const {
     out_conf.put_child(settings_path_, settings_);
     LOG_INFO(settings_path_, "Settings saved.");
-    if (!out_conf.get_child_optional(defaults_path_))
+    if (!out_conf.get_child_optional(defaults_path_)) {
         out_conf.put_child(defaults_path_, defaults_);
         LOG_INFO(defaults_path_, "Settings saved.");
     }
@@ -59,29 +60,21 @@ void configuration::save(
 
 configuration_path_error configuration::path_error(
         const std::string& path) const {
-    return configuration_path_error(path);
+    return {path};
 }
 configuration_key_error configuration::key_error(
         const std::string& key) const {
-    return configuration_key_error(key, 
-                                   settings_path_, 
-                                   defaults_path_);
+    return {key, settings_path_, defaults_path_};
 }
 configuration_value_error configuration::value_error(
         const std::string& key,
         const std::string& value) const {
-    return configuration_value_error(key,
-                                     value,
-                                     settings_path_,
-                                     defaults_path_);
+    return {key, value, settings_path_, defaults_path_};
 }
 configuration_translation_error configuration::translation_error(
         const std::string& key,
-        const std::string& value) {
-    return configuration_value_error(key,
-                                     value,
-                                     settings_path_,
-                                     defaults_path_);
+        const std::string& value) const {
+    return {key, value, settings_path_, defaults_path_};
 }
 
 
@@ -101,8 +94,8 @@ configuration_key_error::configuration_key_error(
         const std::string& defaults_path)
     : configuration_error(
             "Cannot find " + key 
-            + " (in " + settings_path
-            + " or " + defaults_path + ")", 
+                + " (in " + settings_path
+                + " or " + defaults_path + ")", 
             "configuration_key_error") {}
 // value error
 configuration_value_error::configuration_value_error(
@@ -112,10 +105,11 @@ configuration_value_error::configuration_value_error(
         const std::string& defaults_path)
     : configuration_error(
             "Invalid value " + value 
-            + " for key " + key
-            + " (in " + settings_path
-            + " or " + defaults_path + ")", 
+                + " for key " + key
+                + " (in " + settings_path
+                + " or " + defaults_path + ")", 
             "configuration_value_error") {}
+
 // translation error
 configuration_translation_error::configuration_translation_error(
         const std::string& key,
@@ -124,7 +118,7 @@ configuration_translation_error::configuration_translation_error(
         const std::string& defaults_path)
     : configuration_error(
             "Unable to translate value " + value 
-            + " for key " + key
-            + " (in " + settings_path
-            + " or " + defaults_path + ")", 
+                + " for key " + key
+                + " (in " + settings_path
+                + " or " + defaults_path + ")", 
             "configuration_translation_error") {}
