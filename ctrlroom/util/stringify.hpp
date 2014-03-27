@@ -9,9 +9,9 @@ namespace ctrlroom {
     namespace stringify_impl {
         template <class U, class V>
             std::string element_accessor(const std::pair<U, V>& p);
-        }
         template <class RangeElement>
             RangeElement element_accessor(const RangeElement& el);
+    }
 
     template <class Range, class ElementAccessor>
         std::string stringify(

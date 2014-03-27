@@ -139,7 +139,7 @@ namespace ctrlroom
                 configuration_error(
                         const std::string& msg,
                         const std::string& type="configuration_error")
-                    : ctrlroom::exception(msg, type) {} 
+                    : ctrlroom::exception{msg, type} {} 
         };
 
     class configuration_path_error
