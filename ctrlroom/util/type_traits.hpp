@@ -61,6 +61,11 @@ namespace ctrlroom {
     template <class T, class Alloc> 
         struct is_container<std::vector<T, Alloc>> : std::true_type {};
 
+    // is_map returns true for maps, fals for everything else
+    template <class T> struct is_map : std::false_type {};
+    template <class T, class Alloc>
+        struct is_map<std::map<T, Alloc>> : std::true_type {};
+
 }
 
 #endif

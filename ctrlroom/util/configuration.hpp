@@ -75,7 +75,8 @@ namespace ctrlroom {
             // 3. default-value version
             //      if default_value is needed, it is automatically added to
             //      the default configurations for this board
-            template <class T>
+            template <class T,
+                      class = typename std::enable_if<!is_map<T>::value>::type>
                 T get(const std::string& key, 
                       const T& default_value);
             template <class T>
@@ -214,7 +215,7 @@ namespace ctrlroom
             std::string val {get<std::string>(key)};
             return translate(key, val, tr);
         }
-    template <class T>
+    template <class T, class>
         T configuration::get(
                 const std::string& key, 
                 const T& default_value) {
@@ -244,7 +245,7 @@ namespace ctrlroom
             try {
                 return tr.at(val);
             } catch (std::out_of_range) {
-                throw transatlion_error(key, val, tr);
+                throw translation_error(key, val, tr);
             }
         }
 
