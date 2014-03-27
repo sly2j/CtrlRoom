@@ -1,18 +1,34 @@
 #ifndef CTRLROOM_UTIL_STRINGIFY_LOADED
 #define CTRLROOM_UTIL_STRINGIFY_LOADED
 
+#include <ctrlroom/util/type_traits.hpp>
+
+#include <boost/lexical_cast.hpp>
+
 #include <string>
 #include <utility>
-#include <boost/lexical_cast.hpp>
+#include <type_traits>
 
 namespace ctrlroom {
     namespace stringify_impl {
+        // standard accessor returns el untouched
+        template <class RangeElement,
+                  class = std::enable_if<!is_container<RangeElement>::value>::type>
+            RangeElement element_accessor(const RangeElement& el);
+        // container accessor returns stringified version of container
+        template <class RangeElement,
+                  class = std::enable_if<is_container<RangeElement>::value>::type>
+            RangeElement element_accessor(const RangeElement& el);
+        // pair element accessor returns a "<first>: <second>" string
         template <class U, class V>
             std::string element_accessor(const std::pair<U, V>& p);
-        template <class RangeElement>
-            RangeElement element_accessor(const RangeElement& el);
     }
 
+    // return stringified version of a range, with the elements
+    // separated by <delimiter>. The elements are accessed by <acc>
+    // prior to string conversion. 
+    // Default accessor just returns the string, with specializations for
+    // STL containers and std::pair, allowing for nesting.
     template <class Range, class ElementAccessor>
         std::string stringify(
                 const Range& r,
@@ -27,15 +43,21 @@ namespace ctrlroom {
 namespace ctrlroom
 {
     namespace stringify_impl {
-        template <class U, class V>
-            std::string element_accessor(const std::pair<U, V>& p) {
-                return (boost::lexical_cast<std::string>(p.first)
-                            + ": "
-                            + boost::lexical_cast<std::string>(p.second));
-            }
-        template <class RangeElement>
+        template <class RangeElement,
+                  class = std::enable_if<!is_container<RangeElement>::value>::type>
             RangeElement element_accessor(const RangeElement& el) {
                 return el;
+            }
+        template <class RangeElement,
+                  class = std::enable_if<is_container<RangeElement>::value>::type>
+            RangeElement element_accessor(const RangeElement& el) {
+                return "(" + stringify(el) + ")";
+            }
+        template <class U, class V>
+            std::string element_accessor(const std::pair<U, V>& p) {
+                return (boost::lexical_cast<std::string>(element_accessor(p.first))
+                            + ": "
+                            + boost::lexical_cast<std::string>(element_accessor(p.second)));
             }
         }
 
