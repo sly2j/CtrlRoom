@@ -53,7 +53,7 @@ namespace ctrlroom {
         struct is_container<std::unordered_multimap<Key, T, Hash, Pred, Alloc>> : std::true_type {};
     // std::unordered_set
     template <class Key, class Hash, class Pred, class Alloc> 
-        struct is_container<std::unordered_set<Key, T, Hash, Pred, Alloc>> : std::true_type {};
+        struct is_container<std::unordered_set<Key, Hash, Pred, Alloc>> : std::true_type {};
     // std::unordered_multiset
     template <class Key, class Hash, class Pred, class Alloc> 
         struct is_container<std::unordered_multiset<Key, Hash, Pred, Alloc>> : std::true_type {};

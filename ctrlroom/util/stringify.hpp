@@ -13,11 +13,12 @@ namespace ctrlroom {
     namespace stringify_impl {
         // standard accessor returns el untouched
         template <class RangeElement,
-                  class = std::enable_if<!is_container<RangeElement>::value>::type>
+                  class = typename std::enable_if<!is_container<RangeElement>::value>::type>
             RangeElement element_accessor(const RangeElement& el);
         // container accessor returns stringified version of container
         template <class RangeElement,
-                  class = std::enable_if<is_container<RangeElement>::value>::type>
+                  class = typename std::enable_if<is_container<RangeElement>::value>::type,
+                  class = void>
             RangeElement element_accessor(const RangeElement& el);
         // pair element accessor returns a "<first>: <second>" string
         template <class U, class V>
@@ -43,13 +44,11 @@ namespace ctrlroom {
 namespace ctrlroom
 {
     namespace stringify_impl {
-        template <class RangeElement,
-                  class = std::enable_if<!is_container<RangeElement>::value>::type>
+        template <class RangeElement, class>
             RangeElement element_accessor(const RangeElement& el) {
                 return el;
             }
-        template <class RangeElement,
-                  class = std::enable_if<is_container<RangeElement>::value>::type>
+        template <class RangeElement, class, class>
             RangeElement element_accessor(const RangeElement& el) {
                 return "(" + stringify(el) + ")";
             }

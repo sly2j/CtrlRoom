@@ -107,16 +107,7 @@ namespace ctrlroom {
                 T translate(
                         const std::string key,
                         const std::string val,
-                        const translation_map<T>& tr) const {
-                    try {
-                        return tr.at(val);
-                    } catch (std::out_of_range) {
-                        throw transation_error(key, val, tr);
-                    }
-                }
-
-
-            void check_range(std::string
+                        const translation_map<T>& tr) const;
 
             // settings
             std::string settings_path_;
@@ -199,11 +190,13 @@ namespace ctrlroom
         }
     template <class T>
         optional<T> configuration::get_optional(
-                const std::string& key
-                const translation_map<T>& tr) const
-        {
-            std::string val {get_optional<std::string>(key)};
-            return translate(key, val, tr);
+                const std::string& key,
+                const translation_map<T>& tr) const {
+            auto s = get_optional<std::string>(key);
+            if (!s) {
+                return {};
+            }
+            return {translate(key, *s, tr)};
         }
     template <class T>
         T configuration::get(
@@ -237,7 +230,7 @@ namespace ctrlroom
         T configuration::get(
                 const std::string& key,
                 const T& default_value,
-                const translation_map<T>& tr) const {
+                const translation_map<T>& tr) {
             std::string val {get(key, default_value)};
             return translate(key, val, tr);
         }
