@@ -12,8 +12,12 @@ using boost::property_tree::ptree_error;
 //////////////////////////////////////////////////////////////////////////////////////////
 configuration::configuration(
         const std::string& identifier,
+        const std::string& defaults_root,
+        const std::string& model_key,
         const ptree& settings)
-    : settings_path_ {identifier} {
+    : settings_path_ {identifier},
+    , defaults_path_ {defaults_root},
+    , model_key_ {model} {
         load(settings);
     }
 // load
@@ -24,13 +28,13 @@ void configuration::load(
         settings_ = in_conf.get_child(settings_path_);
         LOG_INFO(settings_path_, "Loading settings");
 
-        auto model = in_conf.get_optional<std::string>(MODEL_KEY);
+        auto model = in_conf.get_optional<std::string>(model_key_);
         if (!model) {
             throw configuration_error(
-                    "key 'model' has to be set in " 
+                    "model descriptor '" + model_key_ + "' has to be set in " 
                     + settings_path_);
         }
-        defaults_path_ = std::string(DEFAULTS_KEY) + "." + *model;
+        defaults_path_ += "." + *model;
         auto def = in_conf.get_child_optional(defaults_path_);
         if (def) {
             LOG_INFO(settings_path_, *model + " defaults found.");

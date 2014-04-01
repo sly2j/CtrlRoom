@@ -32,18 +32,12 @@ namespace ctrlroom {
     // The configuration constructor takes a Board identifier string
     // as argument. This string should match the settings path
     // in the associated settings ptree.
-    //
-    // CONFIGURATION FILE OPTIONS:
-    //      * board model: <identifier>.model (cf. MODEL_KEY)
-    //      * default section root is "defaults" (cf. DEFAULTS_KEY)
-    //      * (optional) board default settings: defaults.<model>
     class configuration {
         public:
-            constexpr static const char* MODEL_KEY {"model"};
-            constexpr static const char* DEFAULTS_KEY {"defaults"};
-
             configuration(
                     const std::string& identifier,
+                    const std::string& defaults_path = "defaults",
+                    const std::string& model_key = "model"
                     const ptree& settings);
 
             // load the settings from a given ptree
@@ -111,11 +105,12 @@ namespace ctrlroom {
                         const translation_map<T>& tr) const;
 
             // settings
-            std::string settings_path_;
+            const std::string settings_path_;
             ptree settings_;
             // defaults
             std::string defaults_path_;
             ptree defaults_;
+            const std::string model_key_;
     };
 }
 
