@@ -12,12 +12,12 @@ using boost::property_tree::ptree_error;
 //////////////////////////////////////////////////////////////////////////////////////////
 configuration::configuration(
         const std::string& identifier,
+        const ptree& settings,
         const std::string& defaults_root,
-        const std::string& model_key,
-        const ptree& settings)
-    : settings_path_ {identifier},
-    , defaults_path_ {defaults_root},
-    , model_key_ {model} {
+        const std::string& model_key)
+    : settings_path_ {identifier}
+    , defaults_path_ {defaults_root}
+    , model_key_ {model_key} {
         load(settings);
     }
 // load

@@ -2,7 +2,10 @@
 #define CTRLROOM_VME_MASTER_LOADED
 
 #include <ctrlroom/board.hpp>
+#include <ctrlroom/vme/vme64.hpp>
+#include <ctrlroom/vme/master/block_transfer.hpp>
 #include <string>
+#include <type_traits>
 
 namespace ctrlroom {
     namespace vme {
@@ -13,37 +16,23 @@ namespace ctrlroom {
         class invalid_parameter;
         class timeout_error;
 
-        // data transfer cycle protocols,
-        // for use with the vme::master::cycle* calls
-        // (cycle, read_cycle, write_cycle)
-        //      cycle:
-        //          - RMW
-        //          - ADO
-        //          - ADOH
-        //      read_cycle/write_cycle:
-        //          - SINGLE
-        //          - BLT
-        //          - MBLT
-        //          - MD32
-        //          - P2EVME
-        enum class protocol {
-            SINGLE,         // read/write cycle                     -> read_cycle/write_cycle
-            RMW,            // read-modify-write cycle              -> cycle
-            BLT,            // Block-transfer cycle                 -> read_cycle/write_cycle
-            MBLT,           // Multiplexed block transfer cycle     -> read_cycle/write_cycle
-            MD32,           // Multiplexed data-32 cycle            -> read_cycle/write_cycle
-            ADO,            // Address-only cycle                   -> cycle
-            ADOH,           // Address-only with handshake cycle    -> cycle
-            P2EVME          // Two-edge VMEbus (2eVME) cycle        -> read_cycle/write_cycle
-        };
-
+        // CRTP parent template for master modules. 
+        // Implements the generic master interface. 
+        // Derived implentations only have to define the necessary read/write/... 
+        // functions (defined as protected members in the parent template)
+        // Master module implementations should friend the parent master for the 
+        // CRTP to work, as the explicit read/write/... calls themselves are not part
+        // of the external interface (the generic read/write functions defined below are).
+        // CONFIGURATION FILE OPTIONS:
+        //      * Link index: <identifier>.linkIndex (cf. LINK_INDEX_KEY)
+        //      * board index: <identifier>.boardIndex (cf. BOARD_INDEX_KEY)
         template <class MasterImpl>
             class master : public board {
                 public:
                     constexpr static const char* LINK_INDEX_KEY {"linkIndex"};
                     constexpr static const char* BOARD_INDEX_KEY {"boardIndex"};
 
-                    typedef MasterImpl board_type;
+                    using board_type = MasterImpl;
 
                     master(const std::string& identifier,
                            const ptree& settings);
@@ -55,22 +44,125 @@ namespace ctrlroom {
                         return name_;
                     }
 
-                    template <protocol p> void cycle();
-                    template <protocol p> void read_cycle();
-                    template <protocol p> void write_cycle();
+                    // READ a single value from <address> to <val> for transfer mode
+                    // D08_*, D16 or D32
+                    // returns the number of transactions (i.e., 1 if all went well)
+                    template <addressing_mode A, 
+                                    transfer_mode D,
+                                    class = typename std::enable_if<
+                                                !is_multiplexed<D>::value>::type>
+                        unsigned read(
+                                const typename address_spec<A>::ptr_type address, 
+                                typename transfer_spec<D>::value_type& val) const;
+                    // READ a block of values from <address> to <vals>
+                    // for all different types of block transfer (deduced from A and D)
+                    //
+                    // Returns the number of transaction Nt, where 0 <= Nt <= N.
+                    // Nt should be equal to N except when too many transactions
+                    // were requested. This case should be handled by the caller.
+                    template <addressing_mode A, 
+                                    transfer_mode D, 
+                                    class IntType, unsigned N>
+                        unsigned read(
+                                const typename address_spec<A>::ptr_type address,
+                                std::array<IntType, N>& vals) const;
+                    // WRITE a single value from <val> to <address> for transfer mode
+                    // D08_*, D16 or D32
+                    // returns the number of transactions (i.e., 1 if all went well)
+                    template <addressing_mode A, 
+                                    transfer_mode D,
+                                    class = typename std::enable_if<
+                                                !is_multiplexed<D>::value>::type>
+                        unsigned write(
+                                const typename address_spec<A>::ptr_type address, 
+                                typename transfer_spec<D>::value_type& val) const;
+                    // WRITE a block of values from <vals> to <address>
+                    // for all different types of block transfer (deduced from A and D)
+                    //
+                    // Returns the number of transaction Nt, where 0 <= Nt <= N.
+                    // Nt should be equal to N except when too many transactions
+                    // were requested. This case should be handled by the caller.
+                    template <addressing_mode A, 
+                                    transfer_mode D, 
+                                    class IntType, unsigned N>
+                        unsigned write(
+                                const typename address_spec<A>::ptr_type address,
+                                std::array<IntType, N>& vals) const;
 
-                    vme::error error(
-                            const std::string& msg) const;
-                    vme::bus_error bus_error(
-                            const std::string& msg) const;
-                    vme::comm_error comm_error(
-                            const std::string& msg) const;
-                    vme::invalid_parameter invalid_parameter(
-                            const std::string& msg) const;
-                    vme::timeout_error timeout_error(
-                            const std::string& msg) const;
+                    vme::error error(const std::string& msg) const;
+                    vme::bus_error bus_error(const std::string& msg) const;
+                    vme::comm_error comm_error(const std::string& msg) const;
+                    vme::invalid_parameter invalid_parameter(const std::string& msg) const;
+                    vme::timeout_error timeout_error(const std::string& msg) const;
 
                 protected:
+                    // READ/WRITE placeholder functions, to be replaced in MasterImpl if
+                    // the functionality is needed. Placeholders will generate a compilation
+                    // error if instantiated.
+                    // SINGLE
+                    template <addressing_mode A, transfer_mode D>
+                        unsigned read_single(
+                                const typename address_spec<A>::ptr_type address,
+                                typename transfer_spec<D>::ptr_type val) const;
+                    template <addressing_mode A, transfer_mode D>
+                        unsigned write_single(
+                                const typename address_spec<A>::ptr_type address,
+                                typename transfer_spec<D>::ptr_type val) const;
+                    // BLT
+                    template <addressing_mode A, transfer_mode D>
+                        unsigned read_blt(
+                                const typename address_spec<A>::ptr_type address,
+                                typename transfer_spec<D>::ptr_type val,
+                                unsigned n_requests);
+                    template <addressing_mode A, transfer_mode D>
+                        unsigned write_blt(
+                                const typename address_spec<A>::ptr_type address,
+                                typename transfer_spec<D>::ptr_type val,
+                                unsigned n_requests);
+                    // MD32
+                    template <addressing_mode A>
+                        unsigned read_md32(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::MD32>::ptr_type val,
+                                unsigned n_requests); 
+                    template <addressing_mode A>
+                        unsigned write_md32(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::MD32>::ptr_type val,
+                                unsigned n_requests); 
+                    // MBLT
+                    template <addressing_mode A>
+                        unsigned read_mblt(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::MBLT>::ptr_type val,
+                                unsigned n_requests); 
+                    template <addressing_mode A>
+                        unsigned write_mblt(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::MBLT>::ptr_type val,
+                                unsigned n_requests); 
+                    // 2eVME (3U)
+                    template <addressing_mode A>
+                        unsigned read_2evme3(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type val,
+                                unsigned n_requests); 
+                    template <addressing_mode A>
+                        unsigned write_2evme3(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type val,
+                                unsigned n_requests); 
+                    // 2eVME (6U)
+                    template <addressing_mode A>
+                        unsigned read_2evme6(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type val,
+                                unsigned n_requests); 
+                    template <addressing_mode A>
+                        unsigned write_2evme6(
+                                const typename address_spec<A>::ptr_type address,
+                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type val,
+                                unsigned n_requests); 
 
                     configuration conf_;
                     const std::string name_;
@@ -86,6 +178,22 @@ namespace ctrlroom {
                         return static_cast<const board_type&>(*this);
                     }
 
+                    // block transfer dispatchers (from master/block_transfer.hpp)
+                    template <addressing_mode A, transfer_mode D> friend struct master_impl::dispatch_read;
+                    template <addressing_mode A, transfer_mode D> friend struct master_impl::dispatch_write;
+
+                    // DRY block transfer implementation, used by both
+                    // ::read() and ::write() 
+                    // (distinguished through different block transfer dispatchers).
+                    template <addressing_mode A, 
+                                    transfer_mode D, 
+                                    class IntType, unsigned N,
+                                    class Dispatcher>
+                        unsigned block_transfer(
+                            const typename address_spec<A>::ptr_type address,
+                            std::array<IntType, N>& vals) const;
+
+                    // DRY helper function for the various ::error methods
                     template <class Error>
                         Error error_helper(const std::string& msg) const {
                             return {name_, optical_link_index_, board_index_, msg};
@@ -95,12 +203,10 @@ namespace ctrlroom {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// Implementation
+// implementation: exceptions
 //////////////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
     namespace vme {
-
-        // exceptions
         class error
             : public ctrlroom::exception {
                 public:
@@ -147,22 +253,121 @@ namespace ctrlroom {
                             const short board_index,
                             const std::string& msg);
             };
-
-        // controller<> implementation
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////
+// implementation: master
+//////////////////////////////////////////////////////////////////////////////////////////
+namespace ctrlroom {
+    namespace vme {
+        // constructor
         template <class MasterImpl>
             master<MasterImpl>::master(
                     const std::string& identifier,
                     const ptree& settings)
                 : conf_ {identifier, settings}
                 , name_ {identifier}
-                , optical_link_index_ {conf_.get<short>(OPTICAL_LINK_KEY)}
+                , optical_link_index_ {conf_.get<short>(LINK_INDEX_KEY)}
                 , board_index_ {conf_.get<short>(BOARD_INDEX_KEY)} {}
-
+        // save_settings
         template <class MasterImpl>
             void master<MasterImpl>::save_settings(ptree& settings) const {
                 conf_.save(settings);
             }
 
+        // read (main calls)
+        template <class MasterImpl>
+            template <addressing_mode A, 
+                            transfer_mode D,
+                            class>
+                unsigned master<MasterImpl>::read(
+                        const typename address_spec<A>::ptr_type address, 
+                        typename transfer_spec<D>::value_type& val) const {
+                    return impl().read_single<A, D>(address, val);
+                }
+        template <class MasterImpl>
+            template <addressing_mode A, 
+                            transfer_mode D, 
+                            class IntType, unsigned N>
+                unsigned master<MasterImpl>::read(
+                        const typename address_spec<A>::ptr_type address,
+                        std::array<IntType, N>& vals) const {
+                    return block_transfer<A, D, IntType, N, 
+                                            master_impl::dispatch_read>(
+                            address, vals);
+                }
+
+        // write (main calls)
+        template <class MasterImpl>
+            template <addressing_mode A, 
+                            transfer_mode D,
+                            class>
+                unsigned master<MasterImpl>::write(
+                        const typename address_spec<A>::ptr_type address, 
+                        typename transfer_spec<D>::value_type& val) const {
+                    return impl().write_single<A, D>(address, val);
+                }
+        template <class MasterImpl>
+            template <addressing_mode A, 
+                            transfer_mode D, 
+                            class IntType, unsigned N>
+                unsigned master<MasterImpl>::write(
+                        const typename address_spec<A>::ptr_type address,
+                        std::array<IntType, N>& vals) const {
+                    return block_transfer<A, D, IntType, N, 
+                                            master_impl::dispatch_write>(
+                            address, vals);
+                }
+        
+        // block_transfer
+        template <class MasterImpl>
+            template <addressing_mode A,
+                            transfer_mode D, 
+                            class IntType, unsigned N,
+                            class Dispatcher>
+                unsigned master<MasterImpl>::block_transfer(
+                        const typename address_spec<A>::ptr_type address,
+                        std::array<IntType, N>& vals) const {
+
+                    // number of elements to copy, in VME data width
+                    unsigned n_to_copy {
+                        N * sizeof(IntType) / transfer_spec<D>::WIDTH
+                    };
+
+                    // number of entries in the array
+                    unsigned n_filled {0};
+
+                    // loop over the necessary amount of block transfers,
+                    // taking into account the maximum allowed length block transfer lengths
+                    for (unsigned n_blocks {
+                                1 + (n_to_copy - 1) / transfer_spec<D>::BLOCK_LENGTH};
+                            n_blocks > 0;
+                            --n_blocks) {
+
+                        // number of transactions for this block
+                        unsigned n {
+                            n_blocks == 1 ? n_to_copy
+                                          : transfer_spec<D>::BLOCK_LENGTH
+                        };
+                        typename transfer_spec<D>::ptr_type vptr {
+                            reinterpret_cast<typename transfer_spec<D>::ptr_type>(&vals[n_filled])
+                        };
+
+                        // number of completed transactions in this call.
+                        unsigned n_copied {
+                            Dispatcher::call(*this, address, vptr, n)
+                        };
+
+                        n_filled += n_copied * transfer_spec<D>::WIDTH / sizeof(IntType);
+                        n_to_copy -= n_copied;
+
+                        // handle the case where the block transfer ended prematurely
+                        if (!n_copied) break;
+                    }
+                    return n_filled;
+                }
+                    
+        // exceptions
         template <class MasterImpl>
             vme::error master<MasterImpl>::error(
                     const std::string& msg) const {

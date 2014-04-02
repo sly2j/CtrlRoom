@@ -36,9 +36,9 @@ namespace ctrlroom {
         public:
             configuration(
                     const std::string& identifier,
+                    const ptree& settings,
                     const std::string& defaults_path = "defaults",
-                    const std::string& model_key = "model"
-                    const ptree& settings);
+                    const std::string& model_key = "model");
 
             // load the settings from a given ptree
             void load(const ptree& in_conf);

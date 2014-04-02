@@ -17,8 +17,6 @@ namespace ctrlroom {
             constexpr static const char* DEFAULTS_PATH {"defaults"};
             constexpr static const char* MODEL_KEY {"model"};
 
-            typedef CtrlImpl controller_type;
-
             board(const std::string& identifier,
                   const ptree& settings);
 

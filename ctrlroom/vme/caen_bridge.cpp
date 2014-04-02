@@ -1,3 +1,4 @@
+#if 0
 #include "caen_controller.hpp"
 
 #include <map>
@@ -59,3 +60,4 @@ controller_error caen_controller::decode_error(
     // default:
     return error(msg);
 }
+#endif
