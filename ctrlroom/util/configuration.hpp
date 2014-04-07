@@ -12,6 +12,7 @@
 #include <boost/optional.hpp>
 #include <boost/lexical_cast.hpp>
 
+
 namespace ctrlroom {
     
     using ptree = boost::property_tree::ptree;
@@ -77,6 +78,21 @@ namespace ctrlroom {
                 T get(const std::string& key,
                       const T& default_value,
                       const translation_map<T>& tr);
+            // same getters, but in vector version
+            // 1. optional version
+            template <class T>
+                optional<std::vector<T>> get_optional_vector(
+                        const std::string& key) const;
+            template <class T>
+                optional<std::vector<T>> get_optional_vector(
+                        const std::string& key,
+                        const translation_map<T>& tr) const;
+            // 2. Throwing version
+            template <class T>
+                std::vector<T> get_vector(const std::string& key) const;
+            template <class T>
+                std::vector<T> get_vector(const std::string& key,
+                      const translation_map<T>& tr) const;
 
             // Helper functions to construct exceptions
             configuration_path_error path_error(const std::string& path) const;
@@ -229,6 +245,59 @@ namespace ctrlroom
                 const translation_map<T>& tr) {
             std::string val {get(key, default_value)};
             return translate(key, val, tr);
+        }
+    // and vector versions
+    template <class T>
+        optional<std::vector<T>> configuration::get_optional_vector(
+                const std::string& key) const {
+            optional<std::vector<T>> vec;
+            auto node = settings_.get_child_optional(key);
+            if (!node) {
+                node = defaults_.get_child_optional(key);
+            }
+            if (node) {
+                vec.reset(std::vector<T>());
+                for (const auto& child : *node) {
+                    auto val = child.second.get_value_optional<T>();
+                    if (val) {
+                        vec->push_back(*val);
+                    }
+                }
+            }
+            return vec;
+        }
+    template <class T>
+        optional<std::vector<T>> configuration::get_optional_vector(
+                const std::string& key,
+                const translation_map<T>& tr) const {
+            optional<std::vector<T>> vec;
+            auto vec_str = get_optional_vector<std::string>(key);
+            if (vec_str) {
+                vec.reset(std::vector<T>());
+                for (const auto& el : *vec_str) {
+                    vec->push_back(translate(key, el, tr));
+                }
+            }
+            return vec;
+        }
+    template <class T>
+        std::vector<T> configuration::get_vector(
+                const std::string& key) const {
+            auto s = get_optional_vector<T>(key);
+            if (!s) {
+                throw key_error(key);
+            }
+            return *s;
+        }
+    template <class T>
+        std::vector<T> configuration::get_vector(
+                const std::string& key,
+                const translation_map<T>& tr) const {
+            auto s = get_optional_vector<T>(key, tr);
+            if (!s) {
+                throw key_error(key);
+            }
+            return *s;
         }
 
     // "manual" translation (private)
