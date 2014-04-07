@@ -1,5 +1,19 @@
 #include "master.hpp"
 
+namespace ctrlroom {
+    namespace vme {
+        const translation_map<irq_level> IRQ_TRANSLATOR {
+            {"IRQ1", irq_level::IRQ1},
+            {"IRQ2", irq_level::IRQ2},
+            {"IRQ3", irq_level::IRQ3},
+            {"IRQ4", irq_level::IRQ4},
+            {"IRQ5", irq_level::IRQ5},
+            {"IRQ6", irq_level::IRQ6},
+            {"IRQ7", irq_level::IRQ7}};
+    }
+};
+
+
 using namespace ctrlroom::vme;
 
 //////////////////////////////////////////////////////////////////////////////////////////

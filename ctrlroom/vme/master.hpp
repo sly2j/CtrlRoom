@@ -7,6 +7,13 @@
 #include <string>
 #include <type_traits>
 
+// TODO:
+//  * implement IRQs
+//  * implement RMW cycle
+//  * implement ADO cycle
+//  * implement lock and/or ADOH cycle
+//  * design/implement FIFO block transfer support
+
 namespace ctrlroom {
     namespace vme {
 
@@ -31,18 +38,24 @@ namespace ctrlroom {
                 public:
                     constexpr static const char* LINK_INDEX_KEY {"linkIndex"};
                     constexpr static const char* BOARD_INDEX_KEY {"boardIndex"};
+                    constexpr static const char* IRQ_KEY {"IRQ"};
+                    constexpr static const char* TIMEOUT_KEY {"timeout"};
 
-                    using board_type = MasterImpl;
+                    constexpr static const unsigned DEFAULT_TIMEOUT {1000}; // in [ms]
+
+                    using base_type = board;
+                    using master_type = MasterImpl;
 
                     master(const std::string& identifier,
                            const ptree& settings);
 
 
-                    void save_settings(ptree& settings) const;
-
                     const std::string& name() const {
                         return name_;
                     }
+
+                    // wait for the next IRQ
+                    void wait_for_irq() const;
 
                     // READ a single value from <address> to <val> for transfer mode
                     // D08_*, D16 or D32
@@ -112,70 +125,69 @@ namespace ctrlroom {
                     template <addressing_mode A, transfer_mode D>
                         unsigned read_blt(
                                 const typename address_spec<A>::ptr_type address,
-                                typename transfer_spec<D>::ptr_type val,
-                                unsigned n_requests);
+                                typename transfer_spec<D>::ptr_type buf,
+                                unsigned n_requests) const;
                     template <addressing_mode A, transfer_mode D>
                         unsigned write_blt(
                                 const typename address_spec<A>::ptr_type address,
-                                typename transfer_spec<D>::ptr_type val,
-                                unsigned n_requests);
+                                typename transfer_spec<D>::ptr_type buf,
+                                unsigned n_requests) const;
                     // MD32
                     template <addressing_mode A>
                         unsigned read_md32(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::MD32>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::MD32>::ptr_type buf,
+                                unsigned n_requests) const;
                     template <addressing_mode A>
                         unsigned write_md32(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::MD32>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::MD32>::ptr_type buf,
+                                unsigned n_requests) const;
                     // MBLT
                     template <addressing_mode A>
                         unsigned read_mblt(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::MBLT>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::MBLT>::ptr_type buf,
+                                unsigned n_requests) const;
                     template <addressing_mode A>
                         unsigned write_mblt(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::MBLT>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::MBLT>::ptr_type buf,
+                                unsigned n_requests) const;
                     // 2eVME (3U)
                     template <addressing_mode A>
                         unsigned read_2evme3(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type buf,
+                                unsigned n_requests) const;
                     template <addressing_mode A>
                         unsigned write_2evme3(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::U3_2eVME>::ptr_type buf,
+                                unsigned n_requests) const;
                     // 2eVME (6U)
                     template <addressing_mode A>
                         unsigned read_2evme6(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type buf,
+                                unsigned n_requests) const;
                     template <addressing_mode A>
                         unsigned write_2evme6(
                                 const typename address_spec<A>::ptr_type address,
-                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type val,
-                                unsigned n_requests); 
+                                transfer_spec<transfer_mode::U6_2eVME>::ptr_type buf,
+                                unsigned n_requests) const;
 
-                    configuration conf_;
-                    const std::string name_;
-
-                    const short optical_link_index_;
+                    const short link_index_;
                     const short board_index_;
+                    const std::vector<irq_level> irq_;
+                    const unsigned timeout_;    // timeout level in [ms]
 
                 private:
-                    board_type& impl() {
-                        return static_cast<board_type&>(*this);
+                    master_type& impl() {
+                        return static_cast<master_type&>(*this);
                     }
-                    const board_type& impl() const {
-                        return static_cast<const board_type&>(*this);
+                    const master_type& impl() const {
+                        return static_cast<const master_type&>(*this);
                     }
 
                     // block transfer dispatchers (from master/block_transfer.hpp)
@@ -196,7 +208,7 @@ namespace ctrlroom {
                     // DRY helper function for the various ::error methods
                     template <class Error>
                         Error error_helper(const std::string& msg) const {
-                            return {name_, optical_link_index_, board_index_, msg};
+                            return {name_, link_index_, board_index_, msg};
                         }
             };
     }
@@ -260,20 +272,20 @@ namespace ctrlroom {
 //////////////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
     namespace vme {
+
+        // IRQ translator is defined in master.cpp
+        extern const translation_map<irq_level> IRQ_TRANSLATOR;
+
         // constructor
         template <class MasterImpl>
             master<MasterImpl>::master(
                     const std::string& identifier,
                     const ptree& settings)
-                : conf_ {identifier, settings}
-                , name_ {identifier}
-                , optical_link_index_ {conf_.get<short>(LINK_INDEX_KEY)}
-                , board_index_ {conf_.get<short>(BOARD_INDEX_KEY)} {}
-        // save_settings
-        template <class MasterImpl>
-            void master<MasterImpl>::save_settings(ptree& settings) const {
-                conf_.save(settings);
-            }
+                : base_type {identifier, settings}
+                , link_index_ {conf_.get<short>(LINK_INDEX_KEY)}
+                , board_index_ {conf_.get<short>(BOARD_INDEX_KEY)}
+                , irq_ {conf_.get_vector<irq_level>(IRQ_KEY, IRQ_TRANSLATOR)}
+                , timeout_ {conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)}{}
 
         // read (main calls)
         template <class MasterImpl>

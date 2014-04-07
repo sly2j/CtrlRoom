@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <type_traits>
 
-// TODO: implement 2eVME support for 3U modules
+// TODO: 
+//  * implement 2eVME support for 3U modules
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // VME64/VME64x specification: addressing/transfer mode and utility functions
@@ -36,7 +37,18 @@ namespace ctrlroom {
             U3_2eVME,       // 64-bit 2-edge VME for 3U (VME64x)
             U6_2eVME        // 64-bit 2-edge VME for 6U (VME64x)
         };
-        
+
+        // interrupt levels (implemented as bit masks)
+        enum class irq_level {
+            IRQ1 = 0x01,    // interrupt level 1 (lowest)
+            IRQ2 = 0x02,
+            IRQ3 = 0x04,
+            IRQ4 = 0x08,
+            IRQ5 = 0x10,
+            IRQ6 = 0x20,    
+            IRQ7 = 0x40     // interrupt level 7 (hightest)
+        };
+
         // addressing spec
         // contains address modifiers as well as extended address modifiers (XAM)
         // Implementing the full VME64/VME64x spec, except for U3_2eVME.
