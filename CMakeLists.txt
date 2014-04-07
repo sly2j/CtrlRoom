@@ -23,9 +23,15 @@ else ()
     add_definitions(-DWIN32)
 endif (UNIX)
 
-# CXX FLAGS (currently only supports g++ and clang++)
+# CXX FLAGS (currently only supports gcc (>=4.8) and clang)
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11")
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11")
+if (CMAKE_COMPILER_IS_GNUCC)
+    set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC")
+    set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC")
+    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fPIC")
+    set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fPIC")
+endif (CMAKE_COMPILER_IS_GNUCC)
 
 # require BOOST library
 find_package(Boost COMPONENTS program_options REQUIRED)
@@ -39,6 +45,8 @@ include_directories(${PROJECT_SOURCE_DIR}
 ## aren't present
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     include_directories(tmpincludes)
+ELSE ()
+    include_directories(/usr/local/include/CAEN)
 ENDIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 
