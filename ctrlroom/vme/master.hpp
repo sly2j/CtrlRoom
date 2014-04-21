@@ -14,6 +14,13 @@
 //  * implement lock and/or ADOH cycle
 //  * design/implement FIFO block transfer support
 
+// call VME_FRIEND_MASTER(master_type) from within classes that implement tha 
+// master interface to properly give the generic master 
+// (and block transfer implentation)
+#ifndef VME_FRIEND_MASTER
+#   error VME_FRIEND_MASTER has to be defined (in vme/master/block_transfer.hpp)
+#endif
+
 namespace ctrlroom {
     namespace vme {
 
@@ -64,7 +71,7 @@ namespace ctrlroom {
                                     transfer_mode D,
                                     class = typename std::enable_if<
                                                 !is_multiplexed<D>::value>::type>
-                        unsigned read(
+                        size_t read(
                                 const typename address_spec<A>::ptr_type address, 
                                 typename transfer_spec<D>::value_type& val) const;
                     // READ a block of values from <address> to <vals>
@@ -75,8 +82,8 @@ namespace ctrlroom {
                     // were requested. This case should be handled by the caller.
                     template <addressing_mode A, 
                                     transfer_mode D, 
-                                    class IntType, unsigned N>
-                        unsigned read(
+                                    class IntType, size_t N>
+                        size_t read(
                                 const typename address_spec<A>::ptr_type address,
                                 std::array<IntType, N>& vals) const;
                     // WRITE a single value from <val> to <address> for transfer mode
@@ -86,7 +93,7 @@ namespace ctrlroom {
                                     transfer_mode D,
                                     class = typename std::enable_if<
                                                 !is_multiplexed<D>::value>::type>
-                        unsigned write(
+                        size_t write(
                                 const typename address_spec<A>::ptr_type address, 
                                 typename transfer_spec<D>::value_type& val) const;
                     // WRITE a block of values from <vals> to <address>
@@ -97,8 +104,8 @@ namespace ctrlroom {
                     // were requested. This case should be handled by the caller.
                     template <addressing_mode A, 
                                     transfer_mode D, 
-                                    class IntType, unsigned N>
-                        unsigned write(
+                                    class IntType, size_t N>
+                        size_t write(
                                 const typename address_spec<A>::ptr_type address,
                                 std::array<IntType, N>& vals) const;
 
@@ -114,68 +121,68 @@ namespace ctrlroom {
                     // error if instantiated.
                     // SINGLE
                     template <addressing_mode A, transfer_mode D>
-                        unsigned read_single(
+                        size_t read_single(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type val) const;
                     template <addressing_mode A, transfer_mode D>
-                        unsigned write_single(
+                        size_t write_single(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type val) const;
                     // BLT
                     template <addressing_mode A, transfer_mode D>
-                        unsigned read_blt(
+                        size_t read_blt(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A, transfer_mode D>
-                        unsigned write_blt(
+                        size_t write_blt(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     // MD32
                     template <addressing_mode A>
-                        unsigned read_md32(
+                        size_t read_md32(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MD32>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A>
-                        unsigned write_md32(
+                        size_t write_md32(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MD32>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     // MBLT
                     template <addressing_mode A>
-                        unsigned read_mblt(
+                        size_t read_mblt(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A>
-                        unsigned write_mblt(
+                        size_t write_mblt(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     // 2eVME (3U)
                     template <addressing_mode A>
-                        unsigned read_2evme3(
+                        size_t read_2evme3(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::U3_2eVME>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A>
-                        unsigned write_2evme3(
+                        size_t write_2evme3(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::U3_2eVME>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     // 2eVME (6U)
                     template <addressing_mode A>
-                        unsigned read_2evme6(
+                        size_t read_2evme6(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::U6_2eVME>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A>
-                        unsigned write_2evme6(
+                        size_t write_2evme6(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::U6_2eVME>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
 
                     const short link_index_;
                     const short board_index_;
@@ -199,9 +206,10 @@ namespace ctrlroom {
                     // (distinguished through different block transfer dispatchers).
                     template <addressing_mode A, 
                                     transfer_mode D, 
-                                    class IntType, unsigned N,
-                                    class Dispatcher>
-                        unsigned block_transfer(
+                                    class IntType, size_t N,
+                                    template <addressing_mode, transfer_mode> 
+                                        class Dispatcher>
+                        size_t block_transfer(
                             const typename address_spec<A>::ptr_type address,
                             std::array<IntType, N>& vals) const;
 
@@ -292,16 +300,16 @@ namespace ctrlroom {
             template <addressing_mode A, 
                             transfer_mode D,
                             class>
-                unsigned master<MasterImpl>::read(
+                size_t master<MasterImpl>::read(
                         const typename address_spec<A>::ptr_type address, 
                         typename transfer_spec<D>::value_type& val) const {
-                    return impl().read_single<A, D>(address, val);
+                    return impl().template read_single<A, D>(address, &val);
                 }
         template <class MasterImpl>
             template <addressing_mode A, 
                             transfer_mode D, 
-                            class IntType, unsigned N>
-                unsigned master<MasterImpl>::read(
+                            class IntType, size_t N>
+                size_t master<MasterImpl>::read(
                         const typename address_spec<A>::ptr_type address,
                         std::array<IntType, N>& vals) const {
                     return block_transfer<A, D, IntType, N, 
@@ -314,16 +322,16 @@ namespace ctrlroom {
             template <addressing_mode A, 
                             transfer_mode D,
                             class>
-                unsigned master<MasterImpl>::write(
+                size_t master<MasterImpl>::write(
                         const typename address_spec<A>::ptr_type address, 
                         typename transfer_spec<D>::value_type& val) const {
-                    return impl().write_single<A, D>(address, val);
+                    return impl().template write_single<A, D>(address, &val);
                 }
         template <class MasterImpl>
             template <addressing_mode A, 
                             transfer_mode D, 
-                            class IntType, unsigned N>
-                unsigned master<MasterImpl>::write(
+                            class IntType, size_t N>
+                size_t master<MasterImpl>::write(
                         const typename address_spec<A>::ptr_type address,
                         std::array<IntType, N>& vals) const {
                     return block_transfer<A, D, IntType, N, 
@@ -335,29 +343,29 @@ namespace ctrlroom {
         template <class MasterImpl>
             template <addressing_mode A,
                             transfer_mode D, 
-                            class IntType, unsigned N,
-                            class Dispatcher>
-                unsigned master<MasterImpl>::block_transfer(
+                            class IntType, size_t N,
+                            template <addressing_mode, transfer_mode> class Dispatcher>
+                size_t master<MasterImpl>::block_transfer(
                         const typename address_spec<A>::ptr_type address,
                         std::array<IntType, N>& vals) const {
 
                     // number of elements to copy, in VME data width
-                    unsigned n_to_copy {
+                    size_t n_to_copy {
                         N * sizeof(IntType) / transfer_spec<D>::WIDTH
                     };
 
                     // number of entries in the array
-                    unsigned n_filled {0};
+                    size_t n_filled {0};
 
                     // loop over the necessary amount of block transfers,
                     // taking into account the maximum allowed length block transfer lengths
-                    for (unsigned n_blocks {
+                    for (size_t n_blocks {
                                 1 + (n_to_copy - 1) / transfer_spec<D>::BLOCK_LENGTH};
                             n_blocks > 0;
                             --n_blocks) {
 
                         // number of transactions for this block
-                        unsigned n {
+                        size_t n {
                             n_blocks == 1 ? n_to_copy
                                           : transfer_spec<D>::BLOCK_LENGTH
                         };
@@ -366,8 +374,8 @@ namespace ctrlroom {
                         };
 
                         // number of completed transactions in this call.
-                        unsigned n_copied {
-                            Dispatcher::call(*this, address, vptr, n)
+                        size_t n_copied {
+                            Dispatcher<A, D>::call(*this, address, vptr, n)
                         };
 
                         n_filled += n_copied * transfer_spec<D>::WIDTH / sizeof(IntType);

@@ -166,12 +166,12 @@ namespace ctrlroom {
             };
 
         namespace transfer_spec_impl {
-            template <class IntegerType, unsigned BlockLength /* in bytes */>
+            template <class IntegerType, size_t BlockLength /* in bytes */>
             struct data {
                 using value_type = IntegerType;
                 using ptr_type = value_type*;
-                static constexpr unsigned WIDTH {sizeof(value_type)};
-                static constexpr unsigned BLOCK_LENGTH {BlockLength / sizeof(value_type)};
+                static constexpr size_t WIDTH {sizeof(value_type)};
+                static constexpr size_t BLOCK_LENGTH {BlockLength / sizeof(value_type)};
             };
         }
 

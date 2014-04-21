@@ -3,6 +3,13 @@
 
 #include <ctrlroom/vme/vme64.hpp>
 
+#define VME_FRIEND_MASTER(master_type) \
+    template <addressing_mode A, transfer_mode D> \
+            friend struct ctrlroom::vme::master_impl::dispatch_read; \
+    template <addressing_mode A, transfer_mode D> \
+            friend struct ctrlroom::vme::master_impl::dispatch_write; \
+    template friend master_type;
+
 namespace ctrlroom {
     namespace vme {
         namespace master_impl {
@@ -35,7 +42,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             typename transfer_spec<D>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().read_blt<A, D>(address, vptr, n_requests);
+                        return m.impl().template read_blt<A, D>(address, vptr, n_requests);
                     }
                 };
             template <addressing_mode A, transfer_mode D>
@@ -46,7 +53,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             typename transfer_spec<D>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().write_blt<A, D>(address, vptr, n_requests);
+                        return m.impl().template write_blt<A, D>(address, vptr, n_requests);
                     }
                 };
             // specialization for md32
@@ -58,7 +65,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::MD32>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().read_md32<A>(address, vptr, n_requests);
+                        return m.impl().template read_md32<A>(address, vptr, n_requests);
                     }
                 };
             template <addressing_mode A>
@@ -69,7 +76,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::MD32>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().write_md32<A>(address, vptr, n_requests);
+                        return m.impl().template write_md32<A>(address, vptr, n_requests);
                     }
                 };
             // specialization for mblt
@@ -81,7 +88,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::MBLT>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().read_mblt<A>(address, vptr, n_requests);
+                        return m.impl().template read_mblt<A>(address, vptr, n_requests);
                     }
                 };
             template <addressing_mode A>
@@ -92,7 +99,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::MBLT>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().write_mblt<A>(address, vptr, n_requests);
+                        return m.impl().template write_mblt<A>(address, vptr, n_requests);
                     }
                 };
             // specialization for 2evme (3u)
@@ -104,7 +111,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::U3_2eVME>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().read_2evme3<A>(address, vptr, n_requests);
+                        return m.impl().template read_2evme3<A>(address, vptr, n_requests);
                     }
                 };
             template <addressing_mode A>
@@ -115,7 +122,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::U3_2eVME>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().write_2evme3<A>(address, vptr, n_requests);
+                        return m.impl().template write_2evme3<A>(address, vptr, n_requests);
                     }
                 };
             // specialization for 2evme (6u)
@@ -127,7 +134,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::U6_2eVME>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().read_2evme6<A>(address, vptr, n_requests);
+                        return m.impl().template read_2evme6<A>(address, vptr, n_requests);
                     }
                 };
             template <addressing_mode A>
@@ -138,7 +145,7 @@ namespace ctrlroom {
                             const typename address_spec<A>::ptr_type address,
                             transfer_spec<transfer_mode::U6_2eVME>::ptr_type vptr, 
                             const unsigned n_requests) {
-                        return m.impl().write_2evme6<A>(address, vptr, n_requests);
+                        return m.impl().template write_2evme6<A>(address, vptr, n_requests);
                     }
                 };
         }

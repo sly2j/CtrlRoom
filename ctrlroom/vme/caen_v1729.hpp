@@ -33,12 +33,12 @@ namespace ctrlroom {
                             const memory_type& ped, 
                             const vernier_type& min, 
                             const vernier_type& max,
-                            const unsigned posttrig = 0);
+                            const size_t post = 0);
 
                     memory_type pedestal;
                     vernier_type vernier_min;
                     vernier_type vernier_max;
-                    unsigned post_trig;
+                    size_t post_trig;
                 };
 
             // an array-like "channel view" interface to a V1729 buffer,
@@ -63,20 +63,20 @@ namespace ctrlroom {
                         // taking care of the circular buffer unfolding.
                         // Requires a valid calibration to be loaded! (will _segfault_ if
                         // not the case!)
-                        value_type get(const unsigned chan, unsigned idx) const;
+                        value_type get(const size_t chan, size_t idx) const;
 
                         // get the integrated ADC response
                         // (the range-less version intergrates between min and max
                         value_type integrate(
-                                const unsigned chan, 
-                                const std::pair<unsigned, unsigned>& range) const;
-                        value_type integrate (const unsigned chan) const;
+                                const size_t chan, 
+                                const std::pair<size_t, size_t>& range) const;
+                        value_type integrate (const size_t chan) const;
 
-                        constexpr unsigned size() const;
+                        constexpr size_t size() const;
                         
                         // get a channel view interface to a channel
                         // for more elegant array-like access
-                        view_type channel(const unsigned chan) const;
+                        view_type channel(const size_t chan) const;
 
                     private:
                         value_type mask(const value_type val) const;
@@ -84,21 +84,21 @@ namespace ctrlroom {
                         // do the index magic to address the circular buffer
                         // returns the internal buffer address for this index
                         // and channel number
-                        unsigned fold_index(
-                                const unsigned chan, 
-                                unsigned idx) const;
+                        size_t fold_index(
+                                const size_t chan, 
+                                size_t idx) const;
 
                         // calibrate the buffer, called by the V1729 board class
                         // after the buffer is filled with new data
                         void calibrate(
                                 std::shared_ptr<const calibration_type>& cal,
-                                const unsigned trig_rec);
+                                const size_t trig_rec);
 
                         // helper function for calibrate() to get the correct vernier offset
-                        unsigned vernier();
+                        size_t vernier();
 
                         memory_type buffer_;
-                        unsigned buffer_end_;
+                        size_t buffer_end_;
                         std::shared_ptr<const calibration_type> calibration_;
 
                         friend board_type; 
@@ -164,7 +164,7 @@ namespace ctrlroom {
                             // read the measured pulse from memory
                             // will automatically restart acquisition
                             // if autoRestartAcq is set to true
-                            unsigned read_pulse(buffer_type& buf) const;
+                            size_t read_pulse(buffer_type& buf) const;
 
                             // calibrate the verniers
                             static std::pair<vernier_type, vernier_type> calibrate_verniers(
@@ -180,7 +180,7 @@ namespace ctrlroom {
                                     const std::string& identifier,
                                     const ptree& settings,
                                     std::shared_ptr<master_type>& master,
-                                    unsigned n_acquisitions=50);
+                                    size_t n_acquisitions=50);
 
                         private:
                             // static members so the calibration functions can also use
@@ -192,6 +192,10 @@ namespace ctrlroom {
                             static void init_window(const base_type& b);
 
                             std::shared_ptr<const calibration_type> calibration_; 
+
+                            // to allow more simple syntax in the static member functions
+                            // using a bare slave<> object
+                            friend base_type;
                     };
         }
         // actual V1729a and V1729 aliases
@@ -232,18 +236,18 @@ namespace ctrlroom {
                         using iterator = channel_view_iterator<channel_view>;
 
                         constexpr channel_view(
-                                const unsigned channel, 
+                                const size_t channel, 
                                 const buffer_type& buffer);
 
-                        value_type operator[](const unsigned idx) const;
-                        value_type at(const unsigned idx) const;
-                        constexpr unsigned size() const;
+                        value_type operator[](const size_t idx) const;
+                        value_type at(const size_t idx) const;
+                        constexpr size_t size() const;
                         iterator begin() const;
                         iterator end() const;
-                        unsigned channel_number() const;
+                        size_t channel_number() const;
 
                     private:
-                        const unsigned channel_;
+                        const size_t channel_;
                         const buffer_type& buffer_;
                 };
 
@@ -298,15 +302,15 @@ namespace ctrlroom {
                             channel_view_iterator& operator--();
                             
                             // offset dereference operator (C++11)
-                            value_type operator[] (unsigned i) const;
+                            value_type operator[] (size_t i) const;
                             // swap() and N + <iterator> not implemented
                             
                         private:
                             void set_end();
 
                             const view_type* view_;
-                            unsigned idx_;
-                            unsigned end_idx_;
+                            size_t idx_;
+                            size_t end_idx_;
 
                             friend view_type;
                     };
@@ -342,9 +346,9 @@ namespace ctrlroom {
                     }
 
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                unsigned board<Master, M, A, DBLT>::read_pulse(
+                size_t board<Master, M, A, DBLT>::read_pulse(
                         board<Master, M, A, DBLT>::buffer_type& buf) const {
-                    unsigned nread {
+                    size_t nread {
                         read(instructions::RAM_DATA, buf.buffer_)
                     };
                     typename memory_type::value_type trig_rec;
@@ -383,12 +387,12 @@ namespace ctrlroom {
                     std::unique_ptr<vernier_memory_type> vbuf {new vernier_memory_type};
                     // acquisition loop
                     b.write(instructions::START_ACQUISITION, 1);
-                    unsigned nread {b.read(instructions::RAM_DATA, vbuf)};
+                    size_t nread {b.read(instructions::RAM_DATA, vbuf)};
                     tassert(nread == VERNIER_MEMORY_SIZE,
                             "Problem reading the vernier calibration data");
                     // process the data
-                    for (unsigned i {0}; i < vbuf->size(); ++i) {
-                        unsigned channel {N_CHANNELS - (i % N_CHANNELS) - 1};
+                    for (size_t i {0}; i < vbuf->size(); ++i) {
+                        size_t channel {N_CHANNELS - (i % N_CHANNELS) - 1};
                         if ((*vbuf)[i] < min[channel]) {
                             min[channel] = (*vbuf)[i];
                         }
@@ -404,7 +408,7 @@ namespace ctrlroom {
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master,
-                        unsigned n_acquisitions) 
+                        size_t n_acquisitions) 
                 -> memory_type {
                     LOG_INFO(identifier, "Measuring the board pedestal");
                     // init the arrays
@@ -423,8 +427,8 @@ namespace ctrlroom {
                     for (unsigned i {0}; i < n_acquisitions; ++i) {
                         b.write(instructions::START_ACQUISITION, 1);
                         master->wait_for_irq();
-                        unsigned nread {
-                            b.template read<short unsigned int, MEMORY_SIZE>(instructions::RAM_DATA, ped)
+                        size_t nread {
+                            b.read(instructions::RAM_DATA, ped)
                         };
                         tassert(nread == MEMORY_SIZE,
                                 "Problem measuring the pedestal");
@@ -466,10 +470,10 @@ namespace ctrlroom {
 
                     // set the trigger type
                     trigger_type type {
-                        b.conf_.template get<trigger_type>(TRIGGER_TYPE_KEY, TRIGGER_TYPE_TRANSLATOR)
+                        b.conf().template get<trigger_type>(TRIGGER_TYPE_KEY, TRIGGER_TYPE_TRANSLATOR)
                     };
                     single_data_type bitpattern {
-                        b.conf_.get_bitpattern(
+                        b.conf().get_bitpattern(
                                 TRIGGER_SETTINGS_KEY,
                                 TRIGGER_SETTINGS_TRANSLATOR)
                     };
@@ -479,14 +483,15 @@ namespace ctrlroom {
                     // set the channel source in case of "internal" and "or" trigger
                     if (type == trigger_type::INTERNAL
                             || type == trigger_type::OR) {
-                        single_data_type channel_pattern {
-                            b.conf_.get_bitpattern(
+                        auto channel_pattern =
+                            b.conf().get_optional_bitpattern(
                                     TRIGGER_CHANNEL_SOURCE_KEY,
-                                    channel::CALL,
-                                    CHANNEL_TRANSLATOR)
+                                    CHANNEL_TRANSLATOR);
+                        if (!channel_pattern) {
+                            channel_pattern.reset(channel::CALL);
                         };
                         b.write(instructions::TRIGGER_CHANNEL_SOURCE, 
-                                channel_pattern);
+                                *channel_pattern);
                     }
 
                     // set the trigger threshold as long as 
@@ -496,10 +501,10 @@ namespace ctrlroom {
                     if (!(type == trigger_type::EXTERNAL
                                 && (bitpattern & trigger_settings::DIRECT_EXTERNAL))) {
                         float f_threshold {
-                            b.conf_.template get<float>(TRIGGER_THRESHOLD_KEY)
+                            b.conf().template get<float>(TRIGGER_THRESHOLD_KEY)
                         };
                         if (fabs(f_threshold) > MAX_ABS_TRIGGER_THRESHOLD) {
-                            throw b.conf_.value_error(
+                            throw b.conf().value_error(
                                     TRIGGER_THRESHOLD_KEY,
                                     std::to_string(f_threshold));
                         }
@@ -521,18 +526,27 @@ namespace ctrlroom {
                     single_data_type mode_register = extra_properties<M>::BIT_MODE;
                     // bit 0: enable/disable VME IRQ from this board
                     //        defaults to 0x1
-                    mode_register |= 
-                        b.conf_.template get<single_data_type>(
+                    auto irq = 
+                        b.conf().get_optional(
                                 ENABLE_IRQ_KEY, 
-                                0x1,
                                 BINARY_TRANSLATOR);
+                    if (irq) {
+                        mode_register |= *irq;
+                    } else {
+                        mode_register |= 0x1;
+                    }
+
                     // bit 2: enable auto restart acquisition on read
                     //        of TRIG_REC, defaults to 1 (0x4)
-                    mode_register |= 
-                        (b.conf_.get(
+                    auto restart = 
+                        (b.conf().get_optional(
                                 AUTO_RESTART_ACQ_KEY,
-                                0x1,
-                                BINARY_TRANSLATOR)) << 2;
+                                BINARY_TRANSLATOR));
+                    if (restart) {
+                        mode_register |= *restart << 2;
+                    } else {
+                        mode_register |= 0x1 << 2;
+                    }
                     b.write(instructions::MODE_REGISTER, mode_register);
                 }
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
@@ -540,7 +554,7 @@ namespace ctrlroom {
                         const board<Master, M, A, DBLT>::base_type& b) {
                     // sampling frequency
                     single_data_type clock {
-                        b.conf_.get(
+                        b.conf().get(
                                 SAMPLING_FREQUENCY_KEY,
                                 SAMPLING_FREQUENCY_TRANSLATOR)
                     };
@@ -549,34 +563,36 @@ namespace ctrlroom {
                     b.write(instructions::NB_OF_COLS_TO_READ,
                             N_CELLS);
                     // channels to read (default to all)
-                    channel channel_pattern {
-                        b.conf_.get_bitpattern(
+                    auto channel_pattern = 
+                        b.conf().get_optional_bitpattern(
                                 CHANNEL_MASK_KEY,
-                                channel::CALL,
-                                CHANNEL_TRANSLATOR)
-                    };
+                                CHANNEL_TRANSLATOR);
+                    if (!channel_pattern) {
+                        channel_pattern.reset(channel::CALL);
+                    }
                     b.write(instructions::CHANNEL_MASK, 
-                            channel_pattern);
+                            *channel_pattern);
                     // number of channels for multiplexing 
                     // (1 channel per channel)
-                    single_data_type n_channels {
-                        b.conf_.get(
+                    auto n_channels =
+                        b.conf().get_optional(
                                 CHANNEL_MULTIPLEXING_KEY,
-                                channel_multiplexing::C_SINGLE,
-                                CHANNEL_MULTIPLEXING_TRANSLATOR)
-                    };
+                                CHANNEL_MULTIPLEXING_TRANSLATOR);
+                    if (!n_channels) {
+                        n_channels.reset(channel_multiplexing::C_SINGLE);
+                    }
                     b.write(instructions::NUMBER_OF_CHANNELS,
-                            n_channels);
+                            *n_channels);
                 }
                 // initialize the pre- and post-trig windows
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init_window(
                         const board<Master, M, A, DBLT>::base_type& b) {
                     // pretrig
-                    uint16_t pretrig {b.conf_.template get<uint16_t>(PRETRIG_KEY)};
+                    uint16_t pretrig {b.conf().template get<uint16_t>(PRETRIG_KEY)};
                     // sampling frequency for value checking
                     single_data_type fsample {
-                        b.conf_.get(
+                        b.conf().get(
                                 SAMPLING_FREQUENCY_KEY,
                                 SAMPLING_FREQUENCY_TRANSLATOR)
                     };
@@ -584,15 +600,15 @@ namespace ctrlroom {
                             && pretrig < MIN_PRETRIG_2GHZ)
                         || (fsample == sampling_frequency::FS_1GHZ
                             && pretrig < MIN_PRETRIG_1GHZ)) {
-                        throw b.conf_.value_error(
+                        throw b.conf().value_error(
                                 PRETRIG_KEY, 
                                 std::to_string(pretrig));
                     }
                     // postrig values
-                    uint16_t posttrig {b.conf_.template get<uint16_t>(POSTTRIG_KEY)};
+                    uint16_t posttrig {b.conf().template get<uint16_t>(POSTTRIG_KEY)};
                     // validate posttrig
                     if (posttrig < INTRINSIC_POSTTRIG) {
-                        throw b.conf_.value_error(
+                        throw b.conf().value_error(
                                 POSTTRIG_KEY, 
                                 std::to_string(posttrig));
                     }
@@ -621,7 +637,7 @@ namespace ctrlroom {
                         const memory_type& ped, 
                         const vernier_type& min, 
                         const vernier_type& max,
-                        const unsigned post)
+                        const size_t post)
                         : pedestal {ped}
                         , vernier_min {min}
                         , vernier_max {max} 
@@ -640,7 +656,7 @@ namespace ctrlroom {
 
             template <class Board>
                 auto buffer<Board>::get (
-                        const unsigned chan, unsigned idx) const
+                        const size_t chan, size_t idx) const
                 -> value_type {
                     idx = fold_index(chan, idx);
                     return mask(buffer_[idx]) - calibration_->pedestal[idx];
@@ -648,24 +664,24 @@ namespace ctrlroom {
 
             template <class Board>
                 auto buffer<Board>::integrate (
-                        const unsigned chan, 
-                        const std::pair<unsigned, unsigned>& range) const
+                        const size_t chan, 
+                        const std::pair<size_t, size_t>& range) const
                 -> value_type {
                     value_type sum {0};
-                    for (unsigned i {range.first}; i < range.second; ++i) {
+                    for (size_t i {range.first}; i < range.second; ++i) {
                         sum += get(chan, i);
                     }
                     return sum;
                 }
             template <class Board>
                 auto buffer<Board>::integrate (
-                        const unsigned chan) const 
+                        const size_t chan) const 
                 -> value_type {
                     return integrate(chan, {0, size()});
                 }
 
             template <class Board>
-                constexpr unsigned buffer<Board>::size() const {
+                constexpr size_t buffer<Board>::size() const {
                     return (board_type::MEMORY_DATA_SIZE
                                 - board_type::MEMORY_DATA_SKIP)
                             / board_type::N_CHANNELS;
@@ -673,7 +689,7 @@ namespace ctrlroom {
 
             template <class Board>
                 auto buffer<Board>::channel(
-                        const unsigned chan) const 
+                        const size_t chan) const 
                 -> view_type {
                     return {chan, *this};
                 }
@@ -685,9 +701,9 @@ namespace ctrlroom {
                     return val & board_type::MEMORY_MASK;
                 }
             template <class Board>
-                unsigned buffer<Board>::fold_index(
-                        const unsigned chan, 
-                        unsigned idx) const {
+                size_t buffer<Board>::fold_index(
+                        const size_t chan, 
+                        size_t idx) const {
                     // The first values in the buffer cannot be trusted
                     idx += board_type::MEMORY_DATA_SKIP;
                     // fold the index into the circular buffer
@@ -703,7 +719,7 @@ namespace ctrlroom {
             template <class Board>
                 void buffer<Board>::calibrate(
                         std::shared_ptr<const buffer<Board>::calibration_type>& cal,
-                        const unsigned trig_rec) {
+                        const size_t trig_rec) {
                     tassert(cal, "null pointer error");
                     calibration_ = cal;
                     buffer_end_ = board_type::N_CELLS 
@@ -713,7 +729,7 @@ namespace ctrlroom {
                 }
 
             template <class Board>
-                unsigned buffer<Board>::vernier() {
+                size_t buffer<Board>::vernier() {
                     double v {0};
                     for (unsigned i {0}; 
                             i < board_type::N_CHANNELS; ++i) {
@@ -724,7 +740,7 @@ namespace ctrlroom {
                                         calibration_->vernier_min[i]};
                     };
 
-                    return static_cast<unsigned>(
+                    return static_cast<size_t>(
                             board_type::LINES_PER_CELL * v / board_type::N_CHANNELS);
                 }
 
@@ -742,20 +758,20 @@ namespace ctrlroom {
             
             template <class Board>
                 constexpr channel_view<Board>::channel_view(
-                        const unsigned channel, 
+                        const size_t channel, 
                         const channel_view<Board>::buffer_type& buffer)
                     : channel_ {channel}
                     , buffer_ {buffer} {}
 
             template <class Board>
                 auto channel_view<Board>::operator[](
-                        const unsigned idx) const 
+                        const size_t idx) const 
                 -> value_type {
                     return buffer_.get(channel_, idx);
                 }
             template <class Board>
                 auto channel_view<Board>::at(
-                        const unsigned idx) const 
+                        const size_t idx) const 
                 -> value_type {
                     if (idx > size()) {
                         throw exception("out_of_range", 
@@ -764,7 +780,7 @@ namespace ctrlroom {
                     return (*this)[idx];
                 }
             template <class Board>
-                constexpr unsigned channel_view<Board>::size() const {
+                constexpr size_t channel_view<Board>::size() const {
                     return buffer_.size();
                 }
             template <class Board>
@@ -778,7 +794,7 @@ namespace ctrlroom {
                     return iterator{this}.set_end();
                 }
             template <class Board>
-                unsigned 
+                size_t 
                 channel_view<Board>::channel_number() const {
                     return channel_;
                 }
@@ -864,7 +880,7 @@ namespace ctrlroom {
                     return *this;
                 }
             template <class View>
-                auto channel_view_iterator<View>::operator[] (unsigned i) const 
+                auto channel_view_iterator<View>::operator[] (size_t i) const 
                 -> value_type {
                     return (*view_)[idx_ + i];
                 }
@@ -877,27 +893,5 @@ namespace ctrlroom {
         }
     }
 }
-                
-
-namespace ctrlroom {
-    namespace vme {
-
-#if 0
-        template <class Master,
-                    addressing_mode A = addressing_mode::A32,
-                    transfer_mode D = transfer_mode::MBLT>
-            using caen_v1729 = 
-                        caen_v1729_impl::board<caen_v1729_impl::submodel::V1729>;
-        template <class Master,
-                    addressing_mode A = addressing_mode::A32,
-                    transfer_mode D = transfer_mode::MBLT>
-            using caen_v1729a = 
-                        caen_v1729_impl::board<caen_v1729_impl::submodel::V1729A>;
-
-#endif
-    }
-}
-
-
 
 #endif

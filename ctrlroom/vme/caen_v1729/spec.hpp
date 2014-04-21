@@ -3,6 +3,7 @@
 
 #include <ctrlroom/util/configuration.hpp>
 #include <ctrlroom/vme/vme64.hpp>
+#include <cstddef>
 
 namespace ctrlroom {
     namespace vme {
@@ -28,20 +29,20 @@ namespace ctrlroom {
             //      * calibrated data will be returned as _SIGNED_ 32-bit integers
             //        (after pedestal subtraction, similar to a scope
             struct properties {
-                static constexpr unsigned N_CHANNELS {4};  
-                static constexpr unsigned N_CELLS {128};
-                static constexpr unsigned ROWS_PER_CELL {20};
-                static constexpr unsigned MEMORY_HEADER_SIZE {12};
-                static constexpr unsigned MEMORY_DATA_SIZE {
+                static constexpr size_t N_CHANNELS {4};  
+                static constexpr size_t N_CELLS {128};
+                static constexpr size_t ROWS_PER_CELL {20};
+                static constexpr size_t MEMORY_HEADER_SIZE {12};
+                static constexpr size_t MEMORY_DATA_SIZE {
                     N_CHANNELS * N_CELLS * ROWS_PER_CELL
                 };
-                static constexpr unsigned MEMORY_SIZE {
+                static constexpr size_t MEMORY_SIZE {
                     MEMORY_HEADER_SIZE + MEMORY_DATA_SIZE
                 };
-                static constexpr unsigned MEMORY_DATA_SKIP {40};
-                static constexpr unsigned MEMORY_VERNIER_INDEX {4};
-                static constexpr unsigned VERNIER_MEMORY_SIZE {16 * 1024};
-                static constexpr unsigned INTRINSIC_POSTTRIG {7};
+                static constexpr size_t MEMORY_DATA_SKIP {40};
+                static constexpr size_t MEMORY_VERNIER_INDEX {4};
+                static constexpr size_t VERNIER_MEMORY_SIZE {16 * 1024};
+                static constexpr size_t INTRINSIC_POSTTRIG {7};
                 static constexpr uint16_t MIN_PRETRIG_2GHZ {10000};
                 static constexpr uint16_t MIN_PRETRIG_1GHZ {5000};
                 static constexpr float MAX_ABS_TRIGGER_THRESHOLD {1000.f};  // in mV
@@ -59,14 +60,14 @@ namespace ctrlroom {
             template <> struct extra_properties<submodel::V1729> {
                 static constexpr submodel SUBMODEL {submodel::V1729};
                 static constexpr unsigned MEMORY_PRECISION {12};
-                static constexpr unsigned MEMORY_MASK {0xffff >> (16 - MEMORY_PRECISION)};
-                static constexpr unsigned BIT_MODE {0x0};
+                static constexpr uint16_t MEMORY_MASK {0xffff >> (16 - MEMORY_PRECISION)};
+                static constexpr uint8_t BIT_MODE {0x0};
             };
             template <> struct extra_properties<submodel::V1729A> {
                 static constexpr submodel SUBMODEL {submodel::V1729A};
                 static constexpr unsigned MEMORY_PRECISION {14};
-                static constexpr unsigned MEMORY_MASK {0xffff >> (16 - MEMORY_PRECISION)};
-                static constexpr unsigned BIT_MODE {0x2};
+                static constexpr uint16_t MEMORY_MASK {0xffff >> (16 - MEMORY_PRECISION)};
+                static constexpr uint8_t BIT_MODE {0x2};
             };
 
             // instructions the V1729 knows over VME (see manual for explanation)
@@ -81,8 +82,8 @@ namespace ctrlroom {
                     static constexpr address_type MODE_REGISTER {0x0300};
                     static constexpr address_type FPGA_EVOLUTION {0x0400};
                     static constexpr address_type RESET {0x0800};
-                    static constexpr address_type LOAD_TRIGGER_TRESHOLD_DAC {0x0900};
-                    static constexpr address_type TRIGGER_TRESHOLD_DAC {0x0A00};
+                    static constexpr address_type LOAD_TRIGGER_THRESHOLD_DAC {0x0900};
+                    static constexpr address_type TRIGGER_THRESHOLD_DAC {0x0A00};
                     static constexpr address_type RAM_DATA {0x0D00};
                     static constexpr split_type   RAM_INT_ADD {0x0E00, 0x0F00};
                     static constexpr split_type   MAT_CTRL_REGISTER {0x1000, 0x1100};

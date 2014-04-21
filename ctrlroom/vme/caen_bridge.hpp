@@ -36,35 +36,35 @@ namespace ctrlroom {
                 protected:
                     // Single
                     template <addressing_mode A, transfer_mode D>
-                        unsigned read_single(
+                        size_t read_single(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type val) const;
                     template <addressing_mode A, transfer_mode D>
-                        unsigned write_single(
+                        size_t write_single(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type val) const;
                     // BLT
                     template <addressing_mode A, transfer_mode D>
-                        unsigned read_blt(
+                        size_t read_blt(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A, transfer_mode D>
-                        unsigned write_blt(
+                        size_t write_blt(
                                 const typename address_spec<A>::ptr_type address,
                                 typename transfer_spec<D>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     // MBLT
                     template <addressing_mode A>
-                        unsigned read_mblt(
+                        size_t read_mblt(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                     template <addressing_mode A>
-                        unsigned write_mblt(
+                        size_t write_mblt(
                                 const typename address_spec<A>::ptr_type address,
                                 transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                                unsigned n_requests) const;
+                                size_t n_requests) const;
                 private:
                     void setup();
                     void init();
@@ -80,6 +80,8 @@ namespace ctrlroom {
                     int32_t handle_;
                     const CVBoardTypes model_;
                     uint32_t irq_mask_;
+
+                    VME_FRIEND_MASTER(base_type);
         };
     }
 }
@@ -91,111 +93,131 @@ namespace ctrlroom {
     namespace vme {
 
         template <addressing_mode A, transfer_mode D>
-            unsigned caen_bridge::read_single(
+            size_t caen_bridge::read_single(
                     const typename address_spec<A>::ptr_type address,
                     typename transfer_spec<D>::ptr_type val) const {
 
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::DATA)
+                };
+                constexpr CVDataWidth width {
+                    static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
+                };
                 CVErrorCodes err {
-                    CAENVME_ReadCycle(
-                            handle_, 
-                            address, 
-                            val,
-                            address_spec<A>::DATA,
-                            transfer_spec<D>::WIDTH)
+                    CAENVME_ReadCycle(handle_, address, val, am, width)
                 };
                 HANDLE_CAEN_ERROR(err, "ReadCycle call failed");
                 return {1};
             }
         template <addressing_mode A, transfer_mode D>
-            unsigned caen_bridge::write_single(
+            size_t caen_bridge::write_single(
                     const typename address_spec<A>::ptr_type address,
                     typename transfer_spec<D>::ptr_type val) const {
 
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::DATA)
+                };
+                constexpr CVDataWidth width {
+                    static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
+                };
                 CVErrorCodes err {
-                    CAENVME_WriteCycle(
-                            handle_, 
-                            address, 
-                            val,
-                            address_spec<A>::DATA,
-                            transfer_spec<D>::WIDTH)
+                    CAENVME_WriteCycle(handle_, address, val, am, width)
                 };
                 HANDLE_CAEN_ERROR(err, "ReadCycle call failed");
                 return {1};
             }
 
         template <addressing_mode A, transfer_mode D>
-            unsigned caen_bridge::read_blt(
+            size_t caen_bridge::read_blt(
                     const typename address_spec<A>::ptr_type address,
                     typename transfer_spec<D>::ptr_type buf,
-                    unsigned n_requests) const {
+                    size_t n_requests) const {
                 int n_read {0};
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::BLT)
+                };
+                constexpr CVDataWidth width {
+                    static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
+                };
                 CVErrorCodes err {
                     CAENVME_BLTReadCycle(
                             handle_,
                             address,
                             buf,
                             n_requests,
-                            address_spec<A>::BLT,
-                            transfer_spec<D>::WIDTH,
+                            am,
+                            width,
                             &n_read)
                 };
                 HANDLE_CAEN_ERROR(err, "BLTReadCycle failed");
-                return static_cast<unsigned>(n_read);
+                return static_cast<size_t>(n_read);
             }
         template <addressing_mode A, transfer_mode D>
-            unsigned caen_bridge::write_blt(
+            size_t caen_bridge::write_blt(
                     const typename address_spec<A>::ptr_type address,
                     typename transfer_spec<D>::ptr_type buf,
-                    unsigned n_requests) const {
+                    size_t n_requests) const {
                 int n_written {0};
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::BLT)
+                };
+                constexpr CVDataWidth width {
+                    static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
+                };
                 CVErrorCodes err {
                     CAENVME_BLTWriteCycle(
                             handle_,
                             address,
                             buf,
                             n_requests,
-                            address_spec<A>::BLT,
-                            transfer_spec<D>::WIDTH,
+                            am,
+                            width,
                             &n_written)
                 };
                 HANDLE_CAEN_ERROR(err, "BLTWriteCycle failed");
-                return static_cast<unsigned>(n_written);
+                return static_cast<size_t>(n_written);
             }
         template <addressing_mode A>
-            unsigned caen_bridge::read_mblt(
+            size_t caen_bridge::read_mblt(
                     const typename address_spec<A>::ptr_type address,
                     transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                    unsigned n_requests) const {
+                    size_t n_requests) const {
                 int n_read {0};
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::MBLT)
+                };
                 CVErrorCodes err {
                     CAENVME_MBLTReadCycle(
                             handle_,
                             address,
                             buf,
                             n_requests,
-                            address_spec<A>::MBLT,
+                            am,
                             &n_read)
                 };
                 HANDLE_CAEN_ERROR(err, "MBLTReadCycle failed");
-                return static_cast<unsigned>(n_read);
+                return static_cast<size_t>(n_read);
             }
         template <addressing_mode A>
-            unsigned caen_bridge::write_mblt(
+            size_t caen_bridge::write_mblt(
                     const typename address_spec<A>::ptr_type address,
                     transfer_spec<transfer_mode::MBLT>::ptr_type buf,
-                    unsigned n_requests) const {
+                    size_t n_requests) const {
                 int n_written {0};
+                constexpr CVAddressModifier am {
+                    static_cast<CVAddressModifier>(address_spec<A>::MBLT)
+                };
                 CVErrorCodes err {
                     CAENVME_MBLTWriteCycle(
                             handle_,
                             address,
                             buf,
                             n_requests,
-                            address_spec<A>::MBLT,
+                            am,
                             &n_written)
                 };
                 HANDLE_CAEN_ERROR(err, "MBLTWriteCycle failed");
-                return static_cast<unsigned>(n_written);
+                return static_cast<size_t>(n_written);
             }
     }
 }
