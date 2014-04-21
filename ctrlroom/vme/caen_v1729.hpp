@@ -424,7 +424,7 @@ namespace ctrlroom {
                         b.write(instructions::START_ACQUISITION, 1);
                         master->wait_for_irq();
                         unsigned nread {
-                            b.read(instructions::RAM_DATA, ped)
+                            b.template read<short unsigned int, MEMORY_SIZE>(instructions::RAM_DATA, ped)
                         };
                         tassert(nread == MEMORY_SIZE,
                                 "Problem measuring the pedestal");

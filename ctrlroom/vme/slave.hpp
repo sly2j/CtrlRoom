@@ -34,24 +34,24 @@ namespace ctrlroom {
                     unsigned read(
                             address_type a, 
                             single_data_type& val) const {
-                        return master_->read<A, DSingle>(address_ + a, val);
+                        return master_->template read<A, DSingle>(address_ + a, val);
                     }
                     unsigned write(
                             address_type a, 
                             single_data_type val) const {
-                        return master_->write<A, DSingle>(address_ + a, val);
+                        return master_->template write<A, DSingle>(address_ + a, val);
                     }
-                    template <unsigned N>
+                    template <class Integer, unsigned N>
                         unsigned read(
                                 address_type a, 
-                                std::array<blt_data_type, N>& vals) const {
-                            return master_->read<A, DBLT, N>(address_ + a, vals);
+                                std::array<Integer, N>& vals) const {
+                            return master_->template read<A, DBLT, N>(address_ + a, vals);
                         }
-                    template <unsigned N>
+                    template <class Integer, unsigned N>
                         unsigned write(
                                 address_type a, 
-                                std::array<blt_data_type, N>& vals) const {
-                            return master_->write<A, DBLT, N>(address_ + a, vals);
+                                std::array<Integer, N>& vals) const {
+                            return master_->template write<A, DBLT, N>(address_ + a, vals);
                         }
 
                 protected:

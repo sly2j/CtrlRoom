@@ -52,6 +52,7 @@ ENDIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_subdirectory(ctrlroom/util)
 add_subdirectory(ctrlroom/vme)
+add_subdirectory(test)
 
 add_library(ctrlroom SHARED ctrlroom/board.cpp)
 target_link_libraries(ctrlroom util vme

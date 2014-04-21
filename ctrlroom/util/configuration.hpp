@@ -8,6 +8,7 @@
 #include <map>
 
 #include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/exceptions.hpp>
 #include <boost/optional.hpp>
 #include <boost/lexical_cast.hpp>
@@ -16,6 +17,8 @@
 namespace ctrlroom {
     
     using ptree = boost::property_tree::ptree;
+    using boost::property_tree::read_json;
+
     template <class T> 
         using optional = boost::optional<T>;
 
