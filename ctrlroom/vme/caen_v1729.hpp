@@ -409,6 +409,8 @@ namespace ctrlroom {
                             max[channel] = (*vbuf)[i];
                         }
                     }
+
+                    end(b);
                     return {min, max};
                 }
 
@@ -453,6 +455,8 @@ namespace ctrlroom {
                         );
                     }
                     std::copy(sum.begin(), sum.end(), ped.begin());
+
+                    end(b);
                     return ped;
                 }
 
