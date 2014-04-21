@@ -364,6 +364,14 @@ namespace ctrlroom
             }
             return *s;
         }
+     // configuration_translation_error<T> impl
+    template <class T>
+        configuration_translation_error configuration::translation_error(
+                const std::string& key,
+                const std::string& value,
+                const translation_map<T>& tr) const {
+            return {key, value, tr, settings_path_, defaults_path_};
+        }
 
     // "manual" translation (private)
     template <class T>
@@ -392,7 +400,7 @@ namespace ctrlroom
                         + " (in " + settings_path
                         + " or " + defaults_path
                         + "; allowed values: "
-                        + stringify(tr, 
+                        + stringify(tr, ", ",
                             [](const typename translation_map<T>::value_type& el){
                                 return el.first;
                             })

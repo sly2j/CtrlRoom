@@ -161,6 +161,8 @@ namespace ctrlroom {
                                     std::shared_ptr<master_type>& master,
                                     const calibration_type& cal);
 
+                            ~board();
+
                             // read the measured pulse from memory
                             // will automatically restart acquisition
                             // if autoRestartAcq is set to true
@@ -190,6 +192,9 @@ namespace ctrlroom {
                             static void init_mode_register(const base_type& b);
                             static void init_digitizer(const base_type& b);
                             static void init_window(const base_type& b);
+                            // end the session (called in the destructor)
+                            // issues a RESET instruction
+                            static void end(const base_type& b);
 
                             std::shared_ptr<const calibration_type> calibration_; 
 
@@ -344,6 +349,10 @@ namespace ctrlroom {
                                 }
                         );
                     }
+            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
+                board<Master, M, A, DBLT>::~board() {
+                    end(*this);
+                }
 
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 size_t board<Master, M, A, DBLT>::read_pulse(
@@ -618,6 +627,12 @@ namespace ctrlroom {
                     b.write(instructions::PRETRIG.MSB, (pretrig >> 2) & 0xFF);
                     b.write(instructions::POSTTRIG.LSB, posttrig & 0xFF);
                     b.write(instructions::POSTTRIG.MSB, (posttrig >> 2) & 0xFF);
+                }
+            // end our session (reset the board)
+            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
+                void board<Master, M, A, DBLT>::end(
+                        const board<Master, M, A, DBLT>::base_type& b) {
+                    b.write(instructions::RESET, 0x1);
                 }
                     
         }

@@ -48,7 +48,7 @@ namespace ctrlroom {
                     constexpr static const char* IRQ_KEY {"IRQ"};
                     constexpr static const char* TIMEOUT_KEY {"timeout"};
 
-                    constexpr static const unsigned DEFAULT_TIMEOUT {1000}; // in [ms]
+                    constexpr static size_t DEFAULT_TIMEOUT {1000}; // in [ms]
 
                     using base_type = board;
                     using master_type = MasterImpl;

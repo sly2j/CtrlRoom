@@ -10,45 +10,41 @@ if (NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
+## extra cmake modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} 
+    "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
 # default installation
 get_filename_component (default_prefix "/usr/local" ABSOLUTE)
 set (CMAKE_INSTALL_PREFIX ${default_prefix} CACHE STRING
       "Choose the installation directory; by default it installs in the NORMA directory."
       FORCE)
 
-## set OS dependend compiler flags
-if (UNIX)
-    add_definitions(-DLINUX)
-else ()
-    add_definitions(-DWIN32)
-endif (UNIX)
-
 # CXX FLAGS (currently only supports gcc (>=4.8) and clang)
-set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11")
-set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -std=c++11")
-if (CMAKE_COMPILER_IS_GNUCC)
-    set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC")
-    set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fPIC")
-    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fPIC")
-    set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fPIC")
-endif (CMAKE_COMPILER_IS_GNUCC)
+# -O1 for debug to take care of a problem with constexpr in gcc
+set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++11 -fPIC")
+set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1 -std=c++11 -fPIC")
+set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fPIC")
+set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fPIC")
 
 # require BOOST library
 find_package(Boost COMPONENTS program_options REQUIRED)
 
+## CAENVME libraries required, except  for local development on a macbook, 
+## where the VME libraries aren't present
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    find_package(CAENVME)
+ELSE ()
+    find_package(CAENVME REQUIRED)
+ENDIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
 # include directories
 include_directories(${PROJECT_SOURCE_DIR}
                     ${Boost_INCLUDE_DIRS}
-                    tmpincludes) ## <== only for debug builds
+                    ${CAENVME_INCLUDE_DIRS})
 
-## for local development on a macbook, where the VME libraries
-## aren't present
-IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    include_directories(tmpincludes)
-ELSE ()
-    include_directories(/usr/local/include/CAEN)
-ENDIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-
+# defines
+add_definitions(${CAENVME_DEFINITIONS})
 
 add_subdirectory(ctrlroom/util)
 add_subdirectory(ctrlroom/vme)
@@ -56,4 +52,5 @@ add_subdirectory(test)
 
 add_library(ctrlroom SHARED ctrlroom/board.cpp)
 target_link_libraries(ctrlroom util vme
-                      ${Boost_LIBRARIES})
+                      ${Boost_LIBRARIES}
+                      ${CAENVME_LIBRARIES})
