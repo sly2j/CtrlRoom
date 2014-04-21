@@ -149,7 +149,7 @@ namespace ctrlroom {
 
                             using base_type = slave<Master, A, transfer_mode::D16, DBLT>;
                             using master_type = Master;
-                            using instructions = instructions<A>;
+                            using instructions = caen_v1729_impl::instructions<A>;
                             using buffer_type = buffer<board>;
                             using calibration_type = calibration<board>;
                             using single_data_type = typename base_type::single_data_type;
