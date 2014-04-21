@@ -91,8 +91,27 @@ namespace ctrlroom {
             template <class T>
                 std::vector<T> get_vector(const std::string& key) const;
             template <class T>
-                std::vector<T> get_vector(const std::string& key,
-                      const translation_map<T>& tr) const;
+                std::vector<T> get_vector(
+                        const std::string& key,
+                        const translation_map<T>& tr) const;
+            // special version to create bit pattern of a vector of 
+            // bit patterns
+            // 1. optional versions
+            template <class T>
+                optional<T> get_optional_bitpattern(
+                        const std::string& key) const;
+            template <class T>
+                optional<T> get_optional_bitpattern(
+                        const std::string& key,
+                        const translation_map<T>& tr) const;
+            // 2. throwing versions
+            template <class T>
+                T get_bitpattern(const std::string& key) const;
+            template <class T>
+                T get_bitpattern(
+                        const std::string& key,
+                        const translation_map<T>& tr) const;
+
 
             // Helper functions to construct exceptions
             configuration_path_error path_error(const std::string& path) const;
@@ -100,10 +119,6 @@ namespace ctrlroom {
             configuration_value_error value_error(
                     const std::string& key,
                     const std::string& value) const;
-            configuration_value_error value_error(
-                    const std::string& key,
-                    const std::string& value,
-                    const std::string& allowed) const;
             configuration_translation_error translation_error(
                     const std::string& key,
                     const std::string& value) const;
@@ -294,6 +309,53 @@ namespace ctrlroom
                 const std::string& key,
                 const translation_map<T>& tr) const {
             auto s = get_optional_vector<T>(key, tr);
+            if (!s) {
+                throw key_error(key);
+            }
+            return *s;
+        }
+    // and bitpattern versiosn
+    template <class T>
+        optional<T> configuration::get_optional_bitpattern(
+                const std::string& key) const {
+            optional<std::vector<T>> vec {get_vector<T>(key)};
+            optional<T> pattern;
+            if (vec) {
+                pattern.reset(0);
+                for (const auto& val : *vec) {
+                    *pattern |= val;
+                }
+            }
+            return pattern;
+        }
+    template <class T>
+        optional<T> configuration::get_optional_bitpattern(
+                const std::string& key,
+                const translation_map<T>& tr) const {
+            optional<std::vector<T>> vec {get_vector(key, tr)};
+            optional<T> pattern;
+            if (vec) {
+                pattern.reset(0);
+                for (const auto& val : *vec) {
+                    *pattern |= val;
+                }
+            }
+            return pattern;
+        }
+    template <class T>
+        T configuration::get_bitpattern(
+                const std::string& key) const {
+            auto s = get_optional_bitpattern<T>(key);
+            if (!s) {
+                throw key_error(key);
+            }
+            return *s;
+        }
+    template <class T>
+        T configuration::get_bitpattern(
+                const std::string& key,
+                const translation_map<T>& tr) const {
+            auto s = get_optional_bitpattern<T>(key, tr);
             if (!s) {
                 throw key_error(key);
             }
