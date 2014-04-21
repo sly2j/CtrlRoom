@@ -628,9 +628,9 @@ namespace ctrlroom {
                     posttrig -= INTRINSIC_POSTTRIG;
                     // write to registers
                     b.write(instructions::PRETRIG.LSB, pretrig & 0xFF);
-                    b.write(instructions::PRETRIG.MSB, (pretrig >> 2) & 0xFF);
+                    b.write(instructions::PRETRIG.MSB, (pretrig >> 8) & 0xFF);
                     b.write(instructions::POSTTRIG.LSB, posttrig & 0xFF);
-                    b.write(instructions::POSTTRIG.MSB, (posttrig >> 2) & 0xFF);
+                    b.write(instructions::POSTTRIG.MSB, (posttrig >> 8) & 0xFF);
                 }
             // end our session (reset the board)
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
