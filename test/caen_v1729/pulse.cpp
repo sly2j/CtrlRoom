@@ -5,6 +5,7 @@
 #include <ctrlroom/util/stringify.hpp>
 #include <ctrlroom/util/configuration.hpp>
 #include <ctrlroom/util/exception.hpp>
+#include <ctrlroom/util/logger.hpp>
 
 #include <array>
 #include <vector>
@@ -25,10 +26,12 @@ int main() {
         ptree config;
         read_json("test.json", config);
 
+        LOG_INFO("MAIN", "Obtaining bridge handle");
         std::shared_ptr<bridge_type> master {
-            new bridge_type{"master", config}
+            new bridge_type{"bridge", config}
         };
-        auto pedestal = adc_type::measure_pedestal("adc", config, master);
+        LOG_INFO("MAIN", "Calibrating ADC pedestals");
+        auto pedestal = adc_type::measure_pedestal("ADC", config, master);
     
     } catch (exception& e) {
         LOG_ERROR(e.type(), e.what());

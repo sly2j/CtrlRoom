@@ -155,6 +155,7 @@ namespace ctrlroom {
                             using single_data_type = typename base_type::single_data_type;
                             using blt_data_type = typename base_type::blt_data_type;
                             using address_type = typename base_type::address_type;
+                            using base_type::name;
 
                             board(  const std::string& identifier,
                                     const ptree& settings,
@@ -395,7 +396,10 @@ namespace ctrlroom {
                         std::array<memory_type::value_type, VERNIER_MEMORY_SIZE>;
                     std::unique_ptr<vernier_memory_type> vbuf {new vernier_memory_type};
                     // acquisition loop
+                    LOG_JUNK(identifier, "acquisition start");
                     b.write(instructions::START_ACQUISITION, 1);
+                    master->wait_for_irq();
+                    LOG_JUNK(identifier, "reading verniers from memory");
                     size_t nread {b.read(instructions::RAM_DATA, vbuf)};
                     tassert(nread == VERNIER_MEMORY_SIZE,
                             "Problem reading the vernier calibration data");
@@ -411,6 +415,7 @@ namespace ctrlroom {
                     }
 
                     end(b);
+                    LOG_JUNK(identifier, "Vernier calibration complete");
                     return {min, max};
                 }
 
@@ -421,7 +426,7 @@ namespace ctrlroom {
                         std::shared_ptr<Master>& master,
                         size_t n_acquisitions) 
                 -> memory_type {
-                    LOG_INFO(identifier, "Measuring the board pedestal");
+                    LOG_INFO(identifier, "Measuring the board pedestal.");
                     // init the arrays
                     memory_type ped {0};
                     std::array<double, MEMORY_SIZE + MEMORY_HEADER_SIZE> sum {0.};
@@ -435,6 +440,7 @@ namespace ctrlroom {
                     b.write(instructions::CHANNEL_MASK, channel::CALL);
                     b.write(instructions::NB_OF_COLS_TO_READ, N_CELLS);
                     // do <n_acquisitions> acquisitions
+                    LOG_JUNK(identifier, "Acquisition start, running...");
                     for (unsigned i {0}; i < n_acquisitions; ++i) {
                         b.write(instructions::START_ACQUISITION, 1);
                         master->wait_for_irq();
@@ -442,7 +448,7 @@ namespace ctrlroom {
                             b.read(instructions::RAM_DATA, ped)
                         };
                         tassert(nread == MEMORY_SIZE,
-                                "Problem measuring the pedestal");
+                                "Problem measuring the pedestal.");
                         std::transform(
                                 sum.begin(), sum.end(), 
                                 ped.begin(), 
@@ -457,6 +463,7 @@ namespace ctrlroom {
                     std::copy(sum.begin(), sum.end(), ped.begin());
 
                     end(b);
+                    LOG_JUNK(identifier, "Pedestal measurement complete.");
                     return ped;
                 }
 
@@ -469,15 +476,18 @@ namespace ctrlroom {
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Reset board status");
                     b.write(instructions::RESET, 0x1);
                     init_trigger(b);
                     init_mode_register(b);
                     init_digitizer(b);
                     init_window(b);
+                    LOG_JUNK(b.name(), "board initialized")
                 }
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init_trigger(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Initializing trigger");
                     // enable the trigger rate monitor
                     b.write(instructions::RATE_REG, 0x1);
 
@@ -535,6 +545,7 @@ namespace ctrlroom {
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init_mode_register(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Initializing mode register");
                     // bit 1: 12/14bit mode
                     single_data_type mode_register = extra_properties<M>::BIT_MODE;
                     // bit 0: enable/disable VME IRQ from this board
@@ -565,6 +576,7 @@ namespace ctrlroom {
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init_digitizer(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Initializing digitizer");
                     // sampling frequency
                     single_data_type clock {
                         b.conf().get(
@@ -601,6 +613,7 @@ namespace ctrlroom {
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::init_window(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Initializing acquisition window");
                     // pretrig
                     uint16_t pretrig {b.conf().template get<uint16_t>(PRETRIG_KEY)};
                     // sampling frequency for value checking
@@ -636,6 +649,7 @@ namespace ctrlroom {
             template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
                 void board<Master, M, A, DBLT>::end(
                         const board<Master, M, A, DBLT>::base_type& b) {
+                    LOG_JUNK(b.name(), "Resetting board status");
                     b.write(instructions::RESET, 0x1);
                 }
                     

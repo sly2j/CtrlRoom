@@ -9,8 +9,8 @@ namespace {
 
     // See comments for CVBoardTypes in CAENVMEtypes.h for info
     const std::map<std::string, CVBoardTypes> BOARD_TYPES {
-        {"V1718", cvV1718},
-        {"V2718", cvV2718}};
+        {"CAEN_VX1718", cvV1718},
+        {"CAEN_VX2718", cvV2718}};
 }
 
 caen_bridge::caen_bridge(

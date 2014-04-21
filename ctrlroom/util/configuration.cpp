@@ -28,7 +28,7 @@ void configuration::load(
         settings_ = in_conf.get_child(settings_path_);
         LOG_INFO(settings_path_, "Loading settings");
 
-        auto model = in_conf.get_optional<std::string>(model_key_);
+        auto model = settings_.get_optional<std::string>(model_key_);
         if (!model) {
             throw configuration_error(
                     "model descriptor '" + model_key_ + "' has to be set in " 

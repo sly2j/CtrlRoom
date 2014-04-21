@@ -4,6 +4,7 @@
 #include <ctrlroom/board.hpp>
 #include <ctrlroom/vme/vme64.hpp>
 #include <ctrlroom/vme/master/block_transfer.hpp>
+#include <ctrlroom/util/logger.hpp>
 #include <string>
 #include <type_traits>
 
@@ -40,6 +41,9 @@ namespace ctrlroom {
         // CONFIGURATION FILE OPTIONS:
         //      * Link index: <identifier>.linkIndex (cf. LINK_INDEX_KEY)
         //      * board index: <identifier>.boardIndex (cf. BOARD_INDEX_KEY)
+        //      * IRQ: <identifier>.IRQ ([IRQ1, IRQ2], ...)
+        // optional
+        //      * TIMEOUT (in [ms]): <id>.timeout (defaults to 1000)
         template <class MasterImpl>
             class master : public board {
                 public:
@@ -55,6 +59,7 @@ namespace ctrlroom {
 
                     master(const std::string& identifier,
                            const ptree& settings);
+                    ~master();
 
 
                     const std::string& name() const {
@@ -293,7 +298,14 @@ namespace ctrlroom {
                 , link_index_ {conf_.get<short>(LINK_INDEX_KEY)}
                 , board_index_ {conf_.get<short>(BOARD_INDEX_KEY)}
                 , irq_ {conf_.get_vector<irq_level>(IRQ_KEY, IRQ_TRANSLATOR)}
-                , timeout_ {conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)}{}
+                , timeout_ {conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)}{
+                    LOG_INFO(name(), "Initializing master module");
+                }
+
+        template <class MasterImpl>
+            master<MasterImpl>::~master() {
+                LOG_INFO(name(), "Releasing VME handle");
+            }
 
         // read (main calls)
         template <class MasterImpl>

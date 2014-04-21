@@ -1,6 +1,6 @@
 {
     "bridge": {
-        "model": "CAEN_V2718"
+        "model": "CAEN_VX2718",
         "linkIndex": 0,
         "boardIndex": 0,
         "IRQ": ["IRQ1", "IRQ3", "IRQ7"]
@@ -19,7 +19,7 @@
     "defaults": {
         "CAEN_VX2718": {
             "timeout": 0
-        }
+        },
         "CAEN_V1729a": {
             "triggerType": "internal",
             "triggerSettings": ["rising"],

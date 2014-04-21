@@ -6,6 +6,7 @@
 #include <ctrlroom/vme/master.hpp>
 
 #include <ctrlroom/util/assert.hpp>
+#include <ctrlroom/util/logger.hpp>
 
 #include <memory>
 #include <cstddef>
@@ -33,6 +34,7 @@ namespace ctrlroom {
                     slave(const std::string& identifier,
                           const ptree& settings,
                           std::shared_ptr<master_type>& master);
+                    ~slave();
 
                     size_t read(
                             address_type a, 
@@ -84,8 +86,15 @@ namespace ctrlroom {
                 , master_ {master} 
                 , address_ {conf_.get<address_type>(ADDRESS_KEY)} {
                     tassert(master, "Invalid pointer to master module");
+                    LOG_INFO(name(), "Initializing slave module");
                 }
-
+        template <class Master, 
+                        addressing_mode A, 
+                        transfer_mode DSingle, 
+                        transfer_mode DBLT>
+            slave<Master, A, DSingle, DBLT>::~slave() {
+                LOG_INFO(name(), "Releasing control");
+            }
     }
 }
 
