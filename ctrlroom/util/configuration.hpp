@@ -324,9 +324,9 @@ namespace ctrlroom
             optional<std::vector<T>> vec {get_vector<T>(key)};
             optional<T> pattern;
             if (vec) {
-                pattern.reset(0);
+                pattern.reset(static_cast<T>(0));
                 for (const auto& val : *vec) {
-                    *pattern |= val;
+                    *pattern = static_cast<T>(*pattern | val);
                 }
             }
             return pattern;
@@ -338,9 +338,9 @@ namespace ctrlroom
             optional<std::vector<T>> vec {get_vector(key, tr)};
             optional<T> pattern;
             if (vec) {
-                pattern.reset(0);
+                pattern.reset(static_cast<T>(0));
                 for (const auto& val : *vec) {
-                    *pattern |= val;
+                    *pattern = static_cast<T>(*pattern | val);
                 }
             }
             return pattern;
