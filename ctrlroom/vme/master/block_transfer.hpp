@@ -8,7 +8,7 @@
             friend struct ctrlroom::vme::master_impl::dispatch_read; \
     template <addressing_mode A, transfer_mode D> \
             friend struct ctrlroom::vme::master_impl::dispatch_write; \
-    template friend master_type;
+    friend master_type;
 
 namespace ctrlroom {
     namespace vme {
