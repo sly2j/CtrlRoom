@@ -70,6 +70,9 @@ namespace ctrlroom {
         template <addressing_mode A, transfer_mode D> constexpr uint32_t block_modifier();
         template <addressing_mode A, transfer_mode D> constexpr uint32_t xam_code();
 
+        // To store the LSB and MSB of a 16-bit data register that is split in 2 8-bit registers
+        template <addressing_mode A> struct split_register;
+
         // data transfer spec
         // Interface: transfer_spec<D>::value_type      <- data type
         //                            ::WIDTH           <- data width
@@ -171,6 +174,16 @@ namespace ctrlroom {
                 static constexpr unsigned BLOCK_LENGTH {BlockLength / sizeof(value_type)};
             };
         }
+
+        template <addressing_mode A>
+            struct split_register {
+                using address_type = typename address_spec<A>::ptr_type;
+                const address_type LSB;
+                const address_type MSB;
+                constexpr split_register(address_type lower, address_type upper)
+                    : LSB {lower}
+                    , MSB {upper} {}
+            };
 
         // transfer mode specification (VME64/VME64x)
         // data value type      -> ::value_type
