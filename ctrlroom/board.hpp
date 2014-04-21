@@ -26,6 +26,13 @@ namespace ctrlroom {
                 return name_;
             }
 
+            const configuration& conf() const {
+                return conf_;
+            }
+            configuration& conf() {
+                return conf_;
+            }
+
         protected:
             configuration conf_;
             const std::string name_;
