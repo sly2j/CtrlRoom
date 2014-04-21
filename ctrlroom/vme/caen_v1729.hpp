@@ -193,12 +193,24 @@ namespace ctrlroom {
 
                             std::shared_ptr<const calibration_type> calibration_; 
                     };
-
-
-
-
-            
         }
+        // actual V1729a and V1729 aliases
+        template <class Master, 
+                    addressing_mode A, 
+                    transfer_mode DBLT = transfer_mode::MBLT>
+            using caen_v1729a = caen_v1729_impl::board<
+                                    Master, 
+                                    caen_v1729_impl::submodel::V1729A,
+                                    A,
+                                    DBLT>;
+        template <class Master, 
+                    addressing_mode A, 
+                    transfer_mode DBLT = transfer_mode::MBLT>
+            using caen_v1729 = caen_v1729_impl::board<
+                                    Master, 
+                                    caen_v1729_impl::submodel::V1729,
+                                    A,
+                                    DBLT>;
     }
 }
 
