@@ -13,9 +13,9 @@
 *.a
 
 # build trees
-DEBUG/*
-BUILD/*
-RELEASE/*
+DEBUG*/*
+BUILD*/*
+RELEASE*/*
 
 # cmake
 CMakeCache.txt
