@@ -18,6 +18,7 @@ namespace ctrlroom {
     
     using ptree = boost::property_tree::ptree;
     using boost::property_tree::read_json;
+    using boost::property_tree::write_json;
 
     template <class T> 
         using optional = boost::optional<T>;
@@ -321,7 +322,7 @@ namespace ctrlroom
     template <class T>
         optional<T> configuration::get_optional_bitpattern(
                 const std::string& key) const {
-            optional<std::vector<T>> vec {get_vector<T>(key)};
+            optional<std::vector<T>> vec {get_optional_vector<T>(key)};
             optional<T> pattern;
             if (vec) {
                 pattern.reset(static_cast<T>(0));
@@ -335,7 +336,7 @@ namespace ctrlroom
         optional<T> configuration::get_optional_bitpattern(
                 const std::string& key,
                 const translation_map<T>& tr) const {
-            optional<std::vector<T>> vec {get_vector(key, tr)};
+            optional<std::vector<T>> vec {get_optional_vector(key, tr)};
             optional<T> pattern;
             if (vec) {
                 pattern.reset(static_cast<T>(0));
