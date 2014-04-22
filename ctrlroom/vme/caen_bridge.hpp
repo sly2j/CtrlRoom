@@ -123,7 +123,7 @@ namespace ctrlroom {
                 CVErrorCodes err {
                     CAENVME_WriteCycle(handle_, address, val, am, width)
                 };
-                HANDLE_CAEN_ERROR(err, "ReadCycle call failed");
+                HANDLE_CAEN_ERROR(err, "WriteCycle call failed");
                 return {1};
             }
 
@@ -139,6 +139,8 @@ namespace ctrlroom {
                 constexpr CVDataWidth width {
                     static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
                 };
+                // requests in bytes
+                n_requests *= transfer_spec<D>::WIDTH;
                 CVErrorCodes err {
                     CAENVME_BLTReadCycle(
                             handle_,
@@ -150,6 +152,8 @@ namespace ctrlroom {
                             &n_read)
                 };
                 HANDLE_CAEN_ERROR(err, "BLTReadCycle failed");
+                // number of read values in D words
+                n_read /= transfer_spec<D>::WIDTH;
                 return static_cast<size_t>(n_read);
             }
         template <addressing_mode A, transfer_mode D>
@@ -164,6 +168,8 @@ namespace ctrlroom {
                 constexpr CVDataWidth width {
                     static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)
                 };
+                // requests in bytes
+                n_requests *= transfer_spec<D>::WIDTH;
                 CVErrorCodes err {
                     CAENVME_BLTWriteCycle(
                             handle_,
@@ -175,6 +181,8 @@ namespace ctrlroom {
                             &n_written)
                 };
                 HANDLE_CAEN_ERROR(err, "BLTWriteCycle failed");
+                // number of written values in D words
+                n_written /= transfer_spec<D>::WIDTH;
                 return static_cast<size_t>(n_written);
             }
         template <addressing_mode A>
@@ -186,6 +194,8 @@ namespace ctrlroom {
                 constexpr CVAddressModifier am {
                     static_cast<CVAddressModifier>(address_spec<A>::MBLT)
                 };
+                // requests in bytes
+                n_requests *= transfer_spec<transfer_mode::MBLT>::WIDTH;
                 CVErrorCodes err {
                     CAENVME_MBLTReadCycle(
                             handle_,
@@ -196,6 +206,8 @@ namespace ctrlroom {
                             &n_read)
                 };
                 HANDLE_CAEN_ERROR(err, "MBLTReadCycle failed");
+                // number of read values in 64-bit words
+                n_read /= transfer_spec<transfer_mode::MBLT>::WIDTH;
                 return static_cast<size_t>(n_read);
             }
         template <addressing_mode A>
@@ -207,6 +219,8 @@ namespace ctrlroom {
                 constexpr CVAddressModifier am {
                     static_cast<CVAddressModifier>(address_spec<A>::MBLT)
                 };
+                // requests in bytes
+                n_requests *= transfer_spec<transfer_mode::MBLT>::WIDTH;
                 CVErrorCodes err {
                     CAENVME_MBLTWriteCycle(
                             handle_,
@@ -217,6 +231,8 @@ namespace ctrlroom {
                             &n_written)
                 };
                 HANDLE_CAEN_ERROR(err, "MBLTWriteCycle failed");
+                // number of written values in 64-bit words
+                n_written /= transfer_spec<transfer_mode::MBLT>::WIDTH;
                 return static_cast<size_t>(n_written);
             }
     }
