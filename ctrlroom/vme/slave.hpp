@@ -8,6 +8,8 @@
 #include <ctrlroom/util/assert.hpp>
 #include <ctrlroom/util/logger.hpp>
 
+#include <boost/lexical_cast.hpp>
+
 #include <memory>
 #include <cstddef>
 #include <array>
@@ -84,7 +86,12 @@ namespace ctrlroom {
                     std::shared_ptr<master_type>& master)
                 : base_type {identifier, settings}
                 , master_ {master} 
-                , address_ {conf_.get<address_type>(ADDRESS_KEY)} {
+                , address_ {static_cast<address_type>(
+                                std::stoll(
+                                    conf_.get<std::string>(ADDRESS_KEY),
+                                    nullptr,
+                                    0))
+                            } {
                     tassert(master, "Invalid pointer to master module");
                     LOG_INFO(name(), "Initializing slave module");
                 }
