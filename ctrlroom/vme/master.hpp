@@ -298,8 +298,13 @@ namespace ctrlroom {
                 , link_index_ {conf_.get<short>(LINK_INDEX_KEY)}
                 , board_index_ {conf_.get<short>(BOARD_INDEX_KEY)}
                 , irq_ {conf_.get_vector<irq_level>(IRQ_KEY, IRQ_TRANSLATOR)}
-                , timeout_ {conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)}{
+                , timeout_ {conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)} {
                     LOG_INFO(name(), "Initializing master module");
+                    if (timeout_ == 0) {
+                        throw conf_.value_error(
+                                TIMEOUT_KEY, 
+                                std::to_string(timeout_));
+                    }
                 }
 
         template <class MasterImpl>
