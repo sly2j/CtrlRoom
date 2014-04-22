@@ -89,7 +89,7 @@ configuration_translation_error configuration::translation_error(
 configuration_path_error::configuration_path_error(
         const std::string& path)
     : configuration_error{
-            "Invalid configuration path " + path, 
+            "Invalid configuration path '" + path + "'",
             "configuration_path_error"} {}
 // key error
 configuration_key_error::configuration_key_error(
@@ -97,9 +97,9 @@ configuration_key_error::configuration_key_error(
         const std::string& settings_path,
         const std::string& defaults_path)
     : configuration_error{
-            "Cannot find " + key 
-                + " (in " + settings_path
-                + " or " + defaults_path + ")", 
+            "Cannot find '" + key 
+                + "' (in '" + settings_path
+                + "' or '" + defaults_path + "')", 
             "configuration_key_error"} {}
 // value error
 configuration_value_error::configuration_value_error(
@@ -108,10 +108,10 @@ configuration_value_error::configuration_value_error(
         const std::string& settings_path,
         const std::string& defaults_path)
     : configuration_error{
-            "Invalid value " + value 
-                + " for key " + key
-                + " (in " + settings_path
-                + " or " + defaults_path + ")", 
+            "Invalid value '" + value 
+                + "' for key '" + key
+                + "' (in '" + settings_path
+                + "' or '" + defaults_path + "')", 
             "configuration_value_error"} {}
 
 // translation error
@@ -121,8 +121,8 @@ configuration_translation_error::configuration_translation_error(
         const std::string& settings_path,
         const std::string& defaults_path)
     : configuration_error{
-            "Unable to translate value " + value 
-                + " for key " + key
-                + " (in " + settings_path
-                + " or " + defaults_path + ")", 
+            "Unable to translate value '" + value 
+                + "' for key '" + key
+                + "' (in '" + settings_path
+                + "' or '" + defaults_path + "')", 
             "configuration_translation_error"} {}

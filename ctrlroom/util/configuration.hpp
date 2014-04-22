@@ -395,16 +395,16 @@ namespace ctrlroom
                 const std::string& settings_path,
                 const std::string& defaults_path)
             : configuration_error(
-                    "Unable to translate value " + value
-                        + " for key " + key
-                        + " (in " + settings_path
-                        + " or " + defaults_path
-                        + "; allowed values: "
-                        + stringify(tr, ", ",
+                    "Unable to translate value '" + value
+                        + "' for key '" + key
+                        + "' (in '" + settings_path
+                        + "' or '" + defaults_path
+                        + "' -- allowed values: '"
+                        + stringify(tr, "', '",
                             [](const typename translation_map<T>::value_type& el){
                                 return el.first;
                             })
-                        + ")",
+                        + "')",
                     "configuration_translation_error") {}
 
 }
