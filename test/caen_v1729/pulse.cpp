@@ -17,10 +17,14 @@ using namespace ctrlroom;
 
 using bridge_type = vme::caen_bridge;
 using adc_type = vme::caen_v1729a<bridge_type,
-                                  vme::addressing_mode::A32>;
+                                  vme::addressing_mode::A32,
+                                  vme::transfer_mode::D32,      // single
+                                  vme::transfer_mode::MBLT>;    // BLT
 
 
 int main() {
+
+    global::logger.set_level(log_level::JUNK2);
     
     try {
         ptree config;
