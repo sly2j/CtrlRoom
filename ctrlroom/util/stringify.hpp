@@ -30,7 +30,7 @@ namespace ctrlroom {
     // prior to string conversion. 
     // Default accessor just returns the string, with specializations for
     // STL containers and std::pair, allowing for nesting.
-    template <class Range, class ElementAccessor>
+    template <class Range, class ElementAccessor=decltype(stringify_impl::element_accessor<typename Range::value_type>)>
         std::string stringify(
                 const Range& r,
                 const std::string& delimiter=", ",

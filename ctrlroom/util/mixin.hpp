@@ -24,7 +24,7 @@ namespace ctrlroom {
 
             private:
                 const T& derived() const {
-                    return static_cast<T&>(*this);
+                    return static_cast<const T&>(*this);
                 }
         };
     // add postfix increment/decrement operator to class that derives prefix
@@ -52,7 +52,7 @@ namespace ctrlroom {
     template <class T>
         class add_subtract_mixin {
             public:
-                using difference_type = typename T::difference_type;
+                using difference_type = ptrdiff_t;
                 T& operator-= (const difference_type n) {
                     return derived() += -n;
                 }
@@ -69,7 +69,7 @@ namespace ctrlroom {
                     return static_cast<T&>(*this);
                 }
                 const T& derived() const {
-                    return static_cast<T&>(*this);
+                    return static_cast<const T&>(*this);
                 }
         };
 }
