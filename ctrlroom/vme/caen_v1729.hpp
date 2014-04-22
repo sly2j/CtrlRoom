@@ -126,9 +126,10 @@ namespace ctrlroom {
             template <class Master, 
                             submodel M,
                             addressing_mode A, 
+                            transfer_mode DSingle = transfer_mode::D32,
                             transfer_mode DBLT = transfer_mode::MBLT>
                 class board
-                    : public slave<Master, A, transfer_mode::D16, DBLT>
+                    : public slave<Master, A, DSingle, DBLT>
                     , public properties
                     , public extra_properties<M> {
                         public: 
@@ -147,7 +148,7 @@ namespace ctrlroom {
                             // optional (defaults to single)
                             static constexpr const char* CHANNEL_MULTIPLEXING_KEY {"channelMultiplexing"};
 
-                            using base_type = slave<Master, A, transfer_mode::D16, DBLT>;
+                            using base_type = slave<Master, A, DSingle, DBLT>;
                             using master_type = Master;
                             using instructions = caen_v1729_impl::instructions<A>;
                             using buffer_type = buffer<board>;
@@ -207,20 +208,20 @@ namespace ctrlroom {
         // actual V1729a and V1729 aliases
         template <class Master, 
                     addressing_mode A, 
+                    transfer_mode DSingle = transfer_mode::D32,
                     transfer_mode DBLT = transfer_mode::MBLT>
             using caen_v1729a = caen_v1729_impl::board<
                                     Master, 
                                     caen_v1729_impl::submodel::V1729A,
-                                    A,
-                                    DBLT>;
+                                    A, DSingle, DBLT>;
         template <class Master, 
                     addressing_mode A, 
+                    transfer_mode DSingle = transfer_mode::D32,
                     transfer_mode DBLT = transfer_mode::MBLT>
             using caen_v1729 = caen_v1729_impl::board<
                                     Master, 
                                     caen_v1729_impl::submodel::V1729,
-                                    A,
-                                    DBLT>;
+                                    A, DSingle, DBLT>;
     }
 }
 
@@ -333,12 +334,13 @@ namespace ctrlroom {
     namespace vme {
         namespace caen_v1729_impl {
 
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                board<Master, M, A, DBLT>::board(
+            template <class Master, submodel M, 
+                      addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                board<Master, M, A, DSingle, DBLT>::board(
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master,
-                        const board<Master, M, A, DBLT>::calibration_type& cal)
+                        const board<Master, M, A, DSingle, DBLT>::calibration_type& cal)
                     : base_type{identifier, settings, master} {
                         init(*this);
                         calibration_.reset(
@@ -350,14 +352,16 @@ namespace ctrlroom {
                                 }
                         );
                     }
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                board<Master, M, A, DBLT>::~board() {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                board<Master, M, A, DSingle, DBLT>::~board() {
                     end(*this);
                 }
 
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                size_t board<Master, M, A, DBLT>::read_pulse(
-                        board<Master, M, A, DBLT>::buffer_type& buf) const {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                size_t board<Master, M, A, DSingle, DBLT>::read_pulse(
+                        board<Master, M, A, DSingle, DBLT>::buffer_type& buf) const {
                     size_t nread {
                         read(instructions::RAM_DATA, buf.buffer_)
                     };
@@ -369,8 +373,9 @@ namespace ctrlroom {
                     return nread;
                 }
 
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                auto board<Master, M, A, DBLT>::calibrate_verniers(
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                auto board<Master, M, A, DSingle, DBLT>::calibrate_verniers(
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master) 
@@ -419,8 +424,9 @@ namespace ctrlroom {
                     return {min, max};
                 }
 
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                auto board<Master, M, A, DBLT>::measure_pedestal(
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                auto board<Master, M, A, DSingle, DBLT>::measure_pedestal(
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master,
@@ -473,9 +479,10 @@ namespace ctrlroom {
             // circumvented by creating a raw temporary VME slave object, and using this
             // directly. This has the unfortunate side effect of a somewhat cumbersome
             // syntax (see all the "template" keywords specifiers for member functions)
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::init(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::init(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Reset board status");
                     b.write(instructions::RESET, 0x1);
                     init_trigger(b);
@@ -484,9 +491,10 @@ namespace ctrlroom {
                     init_window(b);
                     LOG_JUNK(b.name(), "board initialized")
                 }
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::init_trigger(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::init_trigger(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Initializing trigger");
                     // enable the trigger rate monitor
                     b.write(instructions::RATE_REG, 0x1);
@@ -542,9 +550,10 @@ namespace ctrlroom {
                         b.write(instructions::LOAD_TRIGGER_THRESHOLD_DAC, 0x1);
                     }
                 }
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::init_mode_register(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::init_mode_register(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Initializing mode register");
                     // bit 1: 12/14bit mode
                     single_data_type mode_register = extra_properties<M>::BIT_MODE;
@@ -573,9 +582,10 @@ namespace ctrlroom {
                     }
                     b.write(instructions::MODE_REGISTER, mode_register);
                 }
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::init_digitizer(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::init_digitizer(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Initializing digitizer");
                     // sampling frequency
                     single_data_type clock {
@@ -610,9 +620,10 @@ namespace ctrlroom {
                             *n_channels);
                 }
                 // initialize the pre- and post-trig windows
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::init_window(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::init_window(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Initializing acquisition window");
                     // pretrig
                     uint16_t pretrig {b.conf().template get<uint16_t>(PRETRIG_KEY)};
@@ -646,9 +657,10 @@ namespace ctrlroom {
                     b.write(instructions::POSTTRIG.MSB, (posttrig >> 8) & 0xFF);
                 }
             // end our session (reset the board)
-            template <class Master, submodel M, addressing_mode A, transfer_mode DBLT>
-                void board<Master, M, A, DBLT>::end(
-                        const board<Master, M, A, DBLT>::base_type& b) {
+            template <class Master, submodel M, 
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::end(
+                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Resetting board status");
                     b.write(instructions::RESET, 0x1);
                 }
