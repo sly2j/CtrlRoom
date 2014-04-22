@@ -26,8 +26,8 @@ error::error(
         const std::string& msg,
         const std::string& type)
     : ctrlroom::exception(
-            msg + " (for " + board_name
-                + ", link: " + std::to_string(link_index)
+            msg + " (for '" + board_name
+                + "', link: " + std::to_string(link_index)
                 + ", board: " + std::to_string(board_index) + ")",
             type) {}
 bus_error::bus_error(
