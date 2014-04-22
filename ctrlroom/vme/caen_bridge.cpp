@@ -26,10 +26,10 @@ caen_bridge::~caen_bridge() {
     end();
 }
 
-void caen_bridge::wait_for_irq() const {
+void caen_bridge::wait_for_irq(size_t timeout) const {
     CVErrorCodes err = CAENVME_IRQEnable(handle_, irq_mask_);
     HANDLE_CAEN_ERROR(err, "Failed to enable IRQ on bridge");
-    err = CAENVME_IRQWait(handle_, irq_mask_, timeout_);
+    err = CAENVME_IRQWait(handle_, irq_mask_, timeout);
     HANDLE_CAEN_ERROR(err, "Problem waiting for IRQ");
 }
 

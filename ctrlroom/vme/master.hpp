@@ -68,6 +68,9 @@ namespace ctrlroom {
 
                     // wait for the next IRQ
                     void wait_for_irq() const;
+                    // timeout is the configured value (<id>.timeout), unless explicitly
+                    // specified. This is only for expert usage.
+                    void wait_for_irq(size_t timeout) const;
 
                     // READ a single value from <address> to <val> for transfer mode
                     // D08_*, D16 or D32
@@ -403,6 +406,11 @@ namespace ctrlroom {
                     }
                     return n_filled;
                 }
+        // IRQ wait (default version)
+        template <class MasterImpl>
+            void master<MasterImpl>::wait_for_irq() const {
+                wait_for_irq(timeout_);
+            }
                     
         // exceptions
         template <class MasterImpl>

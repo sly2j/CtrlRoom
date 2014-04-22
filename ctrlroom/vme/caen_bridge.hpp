@@ -31,7 +31,7 @@ namespace ctrlroom {
 
                     // wait for the next IRQ
                     void wait_for_irq() const;
-
+                    void wait_for_irq(size_t timeout) const;
 
                 protected:
                     // Single
@@ -91,6 +91,11 @@ namespace ctrlroom {
 //////////////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
     namespace vme {
+
+        inline
+        void caen_bridge::wait_for_irq() const {
+            wait_for_irq(timeout_);
+        }
 
         template <addressing_mode A, transfer_mode D>
             size_t caen_bridge::read_single(
@@ -205,6 +210,13 @@ namespace ctrlroom {
                             am,
                             &n_read)
                 };
+                //DBG
+                //DBGstatic unsigned DBG {0};
+                //DBGfor (unsigned i {0}; i < n_read/8; ++i) {
+                //DBG    std::cout << "MBLT " << DBG << ":  " << i << "  "<< buf[i] << std::endl;
+                //DBG}
+                //DBG++DBG;
+                //DBG
                 HANDLE_CAEN_ERROR(err, "MBLTReadCycle failed");
                 // number of read values in 64-bit words
                 n_read /= transfer_spec<transfer_mode::MBLT>::WIDTH;
