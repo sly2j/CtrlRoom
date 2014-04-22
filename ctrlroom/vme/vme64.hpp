@@ -211,9 +211,14 @@ namespace ctrlroom {
             struct transfer_spec<transfer_mode::MD32>
                 : transfer_spec_impl::data<int32_t, 256> {};
         // MBLT
+        // NOTE: MBLT block length reduced from the 2048 from the spec
+        //       because the CAEN VX1718 starts huccuping when reading more
+        //       than 96 64-bit words (even though in theory it should be able 
+        //       to split the blocks in hardware...)
         template <>
             struct transfer_spec<transfer_mode::MBLT>
-                : transfer_spec_impl::data<int64_t, 2048> {};
+                : transfer_spec_impl::data<int64_t, 96*sizeof(int64_t)> {};
+//                : transfer_spec_impl::data<int64_t, 2048> {};
         // U3_2eVME
         // TODO update when implemented!
         template <>
