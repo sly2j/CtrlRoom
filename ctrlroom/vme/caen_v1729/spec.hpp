@@ -31,8 +31,8 @@ namespace ctrlroom {
             //                    of the V1729 implicitly takes care of this step
             //                    through template specialization.
             //      * 16 kB of data generated during the vernier calibration procedure
-            //      * intrinsic posttrigger equal to 7, only POSTTRIG-7 should be set
-            //        in the register, as both values are added
+            //      * minimum required posttrigger value is given by the intrinsic 
+            //        posttrig of 7 (cells)
             //      * minimum PRETRIG values vary between 1GHz and 2GHz sampling
             //        frequencies (corresponding to 100MHz and 50MHz clock speeds)
             //      * calibrated data will be returned as _SIGNED_ 32-bit integers
@@ -51,7 +51,7 @@ namespace ctrlroom {
                 static constexpr size_t MEMORY_DATA_SKIP {40};
                 static constexpr size_t MEMORY_VERNIER_INDEX {4};
                 static constexpr size_t VERNIER_MEMORY_SIZE {16 * 1024};
-                static constexpr size_t INTRINSIC_POSTTRIG {0};
+                static constexpr size_t MIN_POSTTRIG {7};
                 static constexpr uint16_t MIN_PRETRIG_2GHZ {10000};
                 static constexpr uint16_t MIN_PRETRIG_1GHZ {5000};
                 static constexpr float MAX_ABS_TRIGGER_THRESHOLD {1000.f};  // in mV

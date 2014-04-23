@@ -40,7 +40,7 @@ namespace ctrlroom {
                     memory_type pedestal;
                     vernier_type vernier_min;
                     vernier_type vernier_max;
-                    size_t post_trig;
+                    size_t posttrig;
                 };
 
             // an array-like "channel view" interface to a V1729 buffer,
@@ -666,12 +666,11 @@ namespace ctrlroom {
                     // postrig values
                     uint16_t posttrig {b.conf().template get<uint16_t>(POSTTRIG_KEY)};
                     // validate posttrig
-                    if (posttrig < INTRINSIC_POSTTRIG) {
+                    if (posttrig < MIN_POSTTRIG) {
                         throw b.conf().value_error(
                                 POSTTRIG_KEY, 
                                 std::to_string(posttrig));
                     }
-                    posttrig -= INTRINSIC_POSTTRIG;
                     // write to registers
                     b.write(instructions::PRETRIG.LSB, pretrig & 0xFF);
                     b.write(instructions::PRETRIG.MSB, (pretrig >> 8) & 0xFF);
@@ -708,7 +707,7 @@ namespace ctrlroom {
                         : pedestal (ped)        // carefull using initializer lists
                         , vernier_min (min)     // on arrays!!! (in a way they're similar
                         , vernier_max (max)     // to POD structs without constructors)
-                        , post_trig {post} {}
+                        , posttrig {post} {}
 
         }
     }
@@ -800,7 +799,7 @@ namespace ctrlroom {
                     tassert(cal, "null pointer error");
                     calibration_ = cal;
                     buffer_end_ = board_type::N_CELLS 
-                                        - (trig_rec - cal->post_trig);
+                                        - (trig_rec - cal->posttrig);
                     buffer_end_ *= board_type::ROWS_PER_CELL;
                     buffer_end_ -= vernier();
                 }
