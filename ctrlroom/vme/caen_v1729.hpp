@@ -2,6 +2,7 @@
 #define CTRLROOM_VME_CAEN_V1729A_LOADED
 
 #include <ctrlroom/vme/caen_v1729/spec.hpp>
+#include <ctrlroom/vme/caen_v1729/channel_index.hpp>
 #include <ctrlroom/vme/slave.hpp>
 
 #include <ctrlroom/util/assert.hpp>
@@ -14,6 +15,7 @@
 #include <limits>
 #include <string>
 #include <memory>
+#include <cmath>
 
 namespace ctrlroom {
     namespace vme {
@@ -83,9 +85,7 @@ namespace ctrlroom {
                         
                         // do the index magic to address the circular buffer
                         // returns the internal buffer address for this index
-                        // and channel number
                         size_t fold_index(
-                                const size_t chan, 
                                 size_t idx) const;
 
                         // calibrate the buffer, called by the V1729 board class
@@ -107,6 +107,10 @@ namespace ctrlroom {
             // Generic implementation of the V1729 and v1729a board
             // specific typedefs for either boards are provided below
             // (in the main ctrlroom::vme namespace)
+            // Supported modes (addressing, single, BLT):
+            //      * A24/D16/D16
+            //      * A32/D32/D32
+            //      * A32/D32/MBLT
             // CONFIGURATION FILE OPTIONS:
             //      * Trigger type: <id>.triggerType (internal, external, ...)
             //      * Trigger settings: <id>.triggerSettings ([rising, ...])
@@ -131,7 +135,8 @@ namespace ctrlroom {
                 class board
                     : public slave<Master, A, DSingle, DBLT>
                     , public properties
-                    , public extra_properties<M> {
+                    , public extra_properties<M>
+                    , public validate_mode<A, DSingle, DBLT> {
                         public: 
                             static constexpr const char* TRIGGER_TYPE_KEY {"triggerType"};
                             static constexpr const char* TRIGGER_SETTINGS_KEY {"triggerSettings"};
@@ -157,6 +162,9 @@ namespace ctrlroom {
                             using blt_data_type = typename base_type::blt_data_type;
                             using address_type = typename base_type::address_type;
                             using base_type::name;
+                            using base_type::addressing;
+                            using base_type::single_transfer;
+                            using base_type::blt_transfer;
 
                             board(  const std::string& identifier,
                                     const ptree& settings,
@@ -168,7 +176,7 @@ namespace ctrlroom {
                             // read the measured pulse from memory
                             // will automatically restart acquisition
                             // if autoRestartAcq is set to true
-                            size_t read_pulse(buffer_type& buf) const;
+                            size_t read_pulse(buffer_type& buf);
 
                             // calibrate the verniers
                             static std::pair<vernier_type, vernier_type> calibrate_verniers(
@@ -234,11 +242,11 @@ namespace ctrlroom {
 
             // STL-vector-like interface to a single-channel
             // view in a V1729 buffer
-            template <class Board>
+            template <class Buffer>
                 class channel_view {
                     public:
-                        using board_type = Board;
-                        using buffer_type = buffer<board_type>;
+                        using buffer_type = Buffer;
+                        using board_type = typename buffer_type::board_type;
                         using value_type = typename board_type::value_type;
                         using iterator = channel_view_iterator<channel_view>;
 
@@ -351,6 +359,8 @@ namespace ctrlroom {
                                     this->conf_.template get<uint16_t>(POSTTRIG_KEY)
                                 }
                         );
+                        LOG_JUNK(identifier, "start acquisition");
+                        this->write(instructions::START_ACQUISITION, 1);
                     }
             template <class Master, submodel M, 
                         addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
@@ -361,15 +371,21 @@ namespace ctrlroom {
             template <class Master, submodel M, 
                         addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
                 size_t board<Master, M, A, DSingle, DBLT>::read_pulse(
-                        board<Master, M, A, DSingle, DBLT>::buffer_type& buf) const {
+                        board<Master, M, A, DSingle, DBLT>::buffer_type& buf) {
                     size_t nread {
-                        read(instructions::RAM_DATA, buf.buffer_)
+                        this->read(instructions::RAM_DATA, buf.buffer_)
                     };
-                    typename memory_type::value_type trig_rec;
+                    single_data_type trig_rec;
                     // read the trig_rec and automatically restart
                     // acquisition
-                    read(instructions::RAM_DATA, trig_rec);
-                    buf.calibrate(calibration_, trig_rec);
+                    this->read(instructions::RAM_DATA, trig_rec);
+                    // trig_rec is read from the main memory bank, therefor ensure
+                    // only the right information is read (8 is the numbers of bits/byte)
+                    trig_rec >>= 8 * (sizeof(trig_rec)
+                                        - sizeof(typename memory_type::value_type));
+                    trig_rec &= extra_properties<M>::MEMORY_MASK;
+                    buf.calibrate(calibration_, 
+                                    trig_rec);
                     return nread;
                 }
 
@@ -403,9 +419,11 @@ namespace ctrlroom {
                     // acquisition loop
                     LOG_JUNK(identifier, "acquisition start");
                     b.write(instructions::START_ACQUISITION, 1);
-                    master->wait_for_irq();
+                    // use non-standard timeout because it takes a few seconds
+                    // the entire 128kB of memory
+                    master->wait_for_irq(50000);
                     LOG_JUNK(identifier, "reading verniers from memory");
-                    size_t nread {b.read(instructions::RAM_DATA, vbuf)};
+                    size_t nread {b.read(instructions::RAM_DATA, *vbuf)};
                     tassert(nread == VERNIER_MEMORY_SIZE,
                             "Problem reading the vernier calibration data");
                     // process the data
@@ -466,7 +484,15 @@ namespace ctrlroom {
                                 }
                         );
                     }
-                    std::copy(sum.begin(), sum.end(), ped.begin());
+                    // copy the values back to ped, reordering to get a
+                    // channel 0 ==> channel 3 layout
+                    for (size_t i {0}; i < sum.size() / N_CHANNELS; ++i) {
+                        for (size_t j {0}; j < N_CHANNELS; ++j) {
+                            size_t i_lhs {N_CHANNELS * i + j};
+                            size_t i_rhs {N_CHANNELS * i + channel_index<A>::calc(j)};
+                            ped[i_lhs] = round(sum[i_rhs]);
+                        }
+                    }
 
                     end(b);
                     LOG_JUNK(identifier, "Pedestal measurement complete.");
@@ -683,9 +709,9 @@ namespace ctrlroom {
                         const vernier_type& min, 
                         const vernier_type& max,
                         const size_t post)
-                        : pedestal {ped}
-                        , vernier_min {min}
-                        , vernier_max {max} 
+                        : pedestal (ped)        // carefull using initializer lists
+                        , vernier_min (min)     // on arrays!!! (in a way they're similar
+                        , vernier_max (max)     // to POD structs without constructors)
                         , post_trig {post} {}
 
         }
@@ -700,15 +726,24 @@ namespace ctrlroom {
         namespace caen_v1729_impl {
 
             template <class Board>
-                auto buffer<Board>::get (
+                auto buffer<Board>::get(
                         const size_t chan, size_t idx) const
                 -> value_type {
-                    idx = fold_index(chan, idx);
-                    return mask(buffer_[idx]) - calibration_->pedestal[idx];
+                    idx = fold_index(idx);
+                    // pedestals are nicely stored in order
+                    const typename memory_type::value_type ped {
+                        calibration_->pedestal[idx + chan]
+                    };
+                    // buffer values are more complex (see spec.hpp or channel_index.hpp)
+                    const typename memory_type::value_type val {
+                        buffer_[idx 
+                            + channel_index<board_type::addressing>::calc(chan)]
+                    };
+                    return mask(val) - ped;
                 }
 
             template <class Board>
-                auto buffer<Board>::integrate (
+                auto buffer<Board>::integrate(
                         const size_t chan, 
                         const std::pair<size_t, size_t>& range) const
                 -> value_type {
@@ -719,7 +754,7 @@ namespace ctrlroom {
                     return sum;
                 }
             template <class Board>
-                auto buffer<Board>::integrate (
+                auto buffer<Board>::integrate(
                         const size_t chan) const 
                 -> value_type {
                     return integrate(chan, {0, size()});
@@ -727,9 +762,9 @@ namespace ctrlroom {
 
             template <class Board>
                 constexpr size_t buffer<Board>::size() const {
-                    return (board_type::MEMORY_DATA_SIZE
-                                - board_type::MEMORY_DATA_SKIP)
-                            / board_type::N_CHANNELS;
+                    return (board_type::MEMORY_DATA_SIZE 
+                                / board_type::N_CHANNELS)
+                           - board_type::MEMORY_DATA_SKIP;
                 }
 
             template <class Board>
@@ -747,15 +782,16 @@ namespace ctrlroom {
                 }
             template <class Board>
                 size_t buffer<Board>::fold_index(
-                        const size_t chan, 
                         size_t idx) const {
-                    // The first values in the buffer cannot be trusted
+                    // idx of the first cell after the last cell
+                    idx += buffer_end_ + board_type::ROWS_PER_CELL;
+                    // first values in the buffer cannot be trusted
                     idx += board_type::MEMORY_DATA_SKIP;
-                    // fold the index into the circular buffer
-                    idx = (buffer_end_ + idx + 1) % board_type::MEMORY_DATA_SIZE;
-                    // channels are stored backwards 3->0
-                    idx = (idx + 1) * board_type::N_CHANNELS - (chan + 1);
-                    // data is offset by the header
+                    // take into account channels
+                    idx *= board_type::N_CHANNELS;
+                    // fold the index
+                    idx %= board_type::MEMORY_DATA_SIZE;
+                    // data is further offset by the header
                     idx += board_type::MEMORY_HEADER_SIZE;
                     // that's all
                     return idx;
@@ -768,8 +804,8 @@ namespace ctrlroom {
                     tassert(cal, "null pointer error");
                     calibration_ = cal;
                     buffer_end_ = board_type::N_CELLS 
-                                        - (trig_rec - cal.post_trig);
-                    buffer_end_ *= board_type::LINES_PER_CELL;
+                                        - (trig_rec - cal->post_trig);
+                    buffer_end_ *= board_type::ROWS_PER_CELL;
                     buffer_end_ -= vernier();
                 }
 
@@ -779,14 +815,14 @@ namespace ctrlroom {
                     for (unsigned i {0}; 
                             i < board_type::N_CHANNELS; ++i) {
                         // Vernier is stored as words 4-7 in the buffer
-                        v += double{buffer_[board_type::MEMORY_VERNIER_INDEX + i] 
-                                        - calibration_->vernier_min[i]}
-                            / double{calibration_->vernier_max[i] - 
-                                        calibration_->vernier_min[i]};
+                        v += static_cast<double>(buffer_[board_type::MEMORY_VERNIER_INDEX + i] 
+                                        - calibration_->vernier_min[i])
+                            / (calibration_->vernier_max[i] - 
+                                        calibration_->vernier_min[i]);
                     };
 
                     return static_cast<size_t>(
-                            board_type::LINES_PER_CELL * v / board_type::N_CHANNELS);
+                            board_type::ROWS_PER_CELL * v / board_type::N_CHANNELS);
                 }
 
 
@@ -831,12 +867,14 @@ namespace ctrlroom {
             template <class Board>
                 auto channel_view<Board>::begin() const 
                 -> iterator {
-                    return {this};
+                    return {*this};
                 }
             template <class Board>
                 auto channel_view<Board>::end() const 
                 -> iterator {
-                    return iterator{this}.set_end();
+                    iterator it {*this};
+                    it.set_end();
+                    return it;
                 }
             template <class Board>
                 size_t 
