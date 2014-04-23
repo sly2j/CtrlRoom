@@ -281,8 +281,8 @@ namespace ctrlroom {
                     : public std::iterator<std::random_access_iterator_tag,
                                            typename View::value_type>
                     , public comparison_mixin<channel_view_iterator<View>>
-                    , public postfix_mixin<channel_view_iterator<View>>
-                    , public add_subtract_mixin<channel_view_iterator<View>> {
+                    , public add_subtract_mixin<channel_view_iterator<View>>
+                    , public postfix_mixin<channel_view_iterator<View>> {
                         public:
                             using view_type = View;
                             using base_type = std::iterator<
@@ -310,11 +310,6 @@ namespace ctrlroom {
                             // support for difference between two iterators
                             difference_type operator- (
                                     const channel_view_iterator& it) const;
-
-                            // prefix operators, complemented with postfix versions by
-                            // postfix_mixin
-                            channel_view_iterator& operator++();
-                            channel_view_iterator& operator--();
                             
                             // offset dereference operator (C++11)
                             value_type operator[] (size_t i) const;
@@ -381,6 +376,7 @@ namespace ctrlroom {
                     this->read(instructions::RAM_DATA, trig_rec);
                     // trig_rec is read from the main memory bank, therefor ensure
                     // only the right information is read (8 is the numbers of bits/byte)
+                    // TODO: factor this out into an utility function
                     trig_rec >>= 8 * (sizeof(trig_rec)
                                         - sizeof(typename memory_type::value_type));
                     trig_rec &= extra_properties<M>::MEMORY_MASK;
@@ -923,18 +919,7 @@ namespace ctrlroom {
                 auto channel_view_iterator<View>::operator+=(
                         channel_view_iterator<View>::difference_type n) 
                 -> channel_view_iterator& {
-                    if (idx_ != end_idx_) {
-                        // overflow
-                        if (n > 0 && idx_ + n > end_idx_) {
-                            set_end();
-                        // undeflow
-                        } else if (n < 0 && idx_ < n) {
-                            set_end();
-                        // default
-                        } else {
-                            idx_ += n;
-                        }
-                    }
+                    idx_ += n;
                     return *this;
                 }
             template <class View>
@@ -945,33 +930,13 @@ namespace ctrlroom {
                                 - static_cast<difference_type>(b.idx_);
                 }
             template <class View>
-                auto channel_view_iterator<View>::operator++() 
-                -> channel_view_iterator& {
-                    if (idx_ < end_idx_) {
-                        ++idx_;
-                    }
-                    return *this;
-                }
-            template <class View>
-                auto channel_view_iterator<View>::operator--()
-                -> channel_view_iterator& {
-                    if (idx_ > 0) {
-                        ++idx_;
-                    } else {
-                        set_end();
-                    }
-                    return *this;
-                }
-            template <class View>
                 auto channel_view_iterator<View>::operator[] (size_t i) const 
                 -> value_type {
                     return (*view_)[idx_ + i];
                 }
             template <class View>
                 void channel_view_iterator<View>::set_end() {
-                    idx_ = 0;
-                    end_idx_ = 0;
-                    view_ = nullptr;
+                    idx_ = end_idx_;
                 }
         }
     }

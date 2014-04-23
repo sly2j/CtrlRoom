@@ -47,12 +47,18 @@ namespace ctrlroom {
                     return static_cast<T&>(*this);
                 }
         };
-    // add operator -=, operator+ and operator- to classes defining +=
+    // add operator ++, --, -=, + and - to classes defining +=
     // and a difference_type
     template <class T>
         class add_subtract_mixin {
             public:
                 using difference_type = ptrdiff_t;
+                T& operator++ () {
+                    return derived() += 1;
+                }
+                T& operator-- () {
+                    return derived() += -1;
+                }
                 T& operator-= (const difference_type n) {
                     return derived() += -n;
                 }
