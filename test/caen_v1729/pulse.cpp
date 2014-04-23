@@ -76,10 +76,9 @@ int main(int argc, char* argv[]) {
         t.Branch("event", &event, "event/I");
         t.Branch("sample", &sample, "sample/I");
         t.Branch("channel0", &channel0, "channel0/I");
-
-        LOG_INFO("MAIN", "Measuring 1000 pulses");
-        for (int i = 0; i < 1000; ++i) {
-            master->wait_for_irq(5000);
+        LOG_INFO("MAIN", "Measuring 100 pulses");
+        for (int i = 0; i < 100; ++i) {
+            master->wait_for_irq();
             adc.read_pulse(buf);
             ++event;
             sample = 0;
@@ -90,6 +89,20 @@ int main(int argc, char* argv[]) {
             }
         }
         t.Write();
+
+        TTree integral {"integral", "integral"};
+        int int_channel0 {0};
+        integral.Branch("channel0", &int_channel0, "channel0/I");
+
+        LOG_INFO("MAIN", "Measuring 500000 integrated pulses");
+        for (int i = 0; i < 500000; ++i) {
+            master->wait_for_irq();
+            adc.read_pulse(buf);
+            int_channel0 = -buf.integrate(0, {1340, 1400});
+            integral.Fill();
+        }
+        integral.Write();
+
         f.Close();
 
     } catch (exception& e) {

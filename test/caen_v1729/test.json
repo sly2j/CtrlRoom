@@ -10,7 +10,7 @@
         "model": "CAEN_V1729a",
         "triggerType": "internal",
         "triggerSettings": ["falling"],
-        "triggerThreshold": "-100",
+        "triggerThreshold": "-2",
         "preTrig": 10240,
         "postTrig": 50,
         "samplingFrequency": "2GHz",
