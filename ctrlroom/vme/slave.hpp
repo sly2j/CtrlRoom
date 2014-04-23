@@ -32,6 +32,11 @@ namespace ctrlroom {
                         typename transfer_spec<DSingle>::value_type;
                     using blt_data_type = 
                         typename transfer_spec<DBLT>::value_type;
+                    
+                    constexpr static addressing_mode addressing {A};
+                    constexpr static transfer_mode single_transfer {DSingle};
+                    constexpr static transfer_mode blt_transfer {DBLT};
+
 
                     slave(const std::string& identifier,
                           const ptree& settings,
