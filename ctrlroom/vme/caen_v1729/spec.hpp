@@ -21,6 +21,15 @@ namespace ctrlroom {
             //      * the first <MEMORY_DATA_SKIP> values in the circular buffer
             //        cannot be trusted
             //      * VERNIERS stored in words 4-7
+            //      * in-memory ordering of the channels depends on the read mode:
+            //          - A24-D16: shorts 3 -> 0
+            //          - A32-D32: ints 3->2 and 2->1
+            //              NOTE: due to reinterpreting the array of 32-bit integers
+            //                    as 16-bit shorts on a LITTLE-ENDIAN system, this
+            //                    gives the final in-memory order of
+            //                    shorts 2->3->1->2. The channel_index() function
+            //                    of the V1729 implicitly takes care of this step
+            //                    through template specialization.
             //      * 16 kB of data generated during the vernier calibration procedure
             //      * intrinsic posttrigger equal to 7, only POSTTRIG-7 should be set
             //        in the register, as both values are added
@@ -42,7 +51,7 @@ namespace ctrlroom {
                 static constexpr size_t MEMORY_DATA_SKIP {40};
                 static constexpr size_t MEMORY_VERNIER_INDEX {4};
                 static constexpr size_t VERNIER_MEMORY_SIZE {16 * 1024};
-                static constexpr size_t INTRINSIC_POSTTRIG {7};
+                static constexpr size_t INTRINSIC_POSTTRIG {0};
                 static constexpr uint16_t MIN_PRETRIG_2GHZ {10000};
                 static constexpr uint16_t MIN_PRETRIG_1GHZ {5000};
                 static constexpr float MAX_ABS_TRIGGER_THRESHOLD {1000.f};  // in mV
@@ -69,6 +78,28 @@ namespace ctrlroom {
                 static constexpr uint16_t MEMORY_MASK {0xffff >> (16 - MEMORY_PRECISION)};
                 static constexpr uint8_t BIT_MODE {0x2};
             };
+            // supported modes (addressing/single transfer/BLT):
+            //      * A24/D16/D16
+            //      * A32/D32/D32
+            //      * A32/D32/MBLT
+            // board class derives from this class to generate a compile time
+            // error if an invalid mode is attempted (rather than waiting for
+            // bus errors)
+            template <addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                struct validate_mode {
+                    static_assert(  
+                        (A == addressing_mode::A24
+                                && DSingle == transfer_mode::D16
+                                && DBLT == transfer_mode::D16)
+                            || (A == addressing_mode::A32
+                                && DSingle == transfer_mode::D32
+                                && DBLT == transfer_mode::D32)
+                            || (A == addressing_mode::A32
+                                && DSingle == transfer_mode::D32
+                                && DBLT == transfer_mode::MBLT),
+                        "Invalid mode for V1729 board, "
+                        "only A24/D16/D16, A32/D32/D32 and A32/D32/MBLT supported");
+                };
 
             // instructions the V1729 knows over VME (see manual for explanation)
             template <addressing_mode A>
