@@ -453,7 +453,6 @@ namespace ctrlroom {
                     // temporary board handle
                     base_type b {identifier, settings, master};
                     init(b);
-                    b.write(instructions::RESET, 1);
                     // random trigger for all channels and cells
                     b.write(instructions::TRIGGER_TYPE, 
                             trigger_type::SOFTWARE | trigger_settings::RANDOM);
@@ -610,12 +609,21 @@ namespace ctrlroom {
                         const board<Master, M, A, DSingle, DBLT>::base_type& b) {
                     LOG_JUNK(b.name(), "Initializing digitizer");
                     // sampling frequency
-                    single_data_type clock {
+                    single_data_type new_clock {
                         b.conf().get(
                                 SAMPLING_FREQUENCY_KEY,
                                 SAMPLING_FREQUENCY_TRANSLATOR)
                     };
-                    b.write(instructions::FP_FREQUENCY, clock);
+                    // check if we need to change it at all. Important, because a change,
+                    // even to the same value, requires new pedestals. 
+                    // The change should therefor effectively be issued during the pedestal
+                    // measurement.
+                    single_data_type old_clock {0};
+                    b.read(instructions::FP_FREQUENCY, old_clock);
+                    if ((old_clock & 0x3F) != new_clock) {
+                        LOG_WARNING(b.name(), "CHANGING PILOT FREQUENCY");
+                        b.write(instructions::FP_FREQUENCY, new_clock);
+                    }
                     // number of cols to read (all)
                     b.write(instructions::NB_OF_COLS_TO_READ,
                             N_CELLS);
@@ -726,15 +734,15 @@ namespace ctrlroom {
                 -> value_type {
                     idx = fold_index(idx);
                     // pedestals are nicely stored in order
-                    const typename memory_type::value_type ped {
+                    const value_type ped {
                         calibration_->pedestal[idx + chan]
                     };
                     // buffer values are more complex (see spec.hpp or channel_index.hpp)
-                    const typename memory_type::value_type val {
-                        buffer_[idx 
-                            + channel_index<board_type::addressing>::calc(chan)]
+                    const value_type val {
+                        mask(buffer_[idx 
+                            + channel_index<board_type::addressing>::calc(chan)])
                     };
-                    return mask(val) - ped;
+                    return val - ped;
                 }
 
             template <class Board>

@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
             new bridge_type{"bridge", config}
         };
         LOG_INFO("MAIN", "Calibrating ADC pedestals");
-        auto pedestal = adc_type::measure_pedestal("ADC", config, master);
+        auto pedestal = adc_type::measure_pedestal("ADC", config, master, 100);
         //adc_type::memory_type pedestal {0};
         LOG_INFO("MAIN", "Calibrating ADC verniers");
         //auto vernier = adc_type::calibrate_verniers("ADC", config, master);
@@ -92,13 +92,22 @@ int main(int argc, char* argv[]) {
 
         TTree integral {"integral", "integral"};
         int int_channel0 {0};
+        int int_channel1 {0};
+        int int_channel2 {0};
+        int int_channel3 {0};
         integral.Branch("channel0", &int_channel0, "channel0/I");
+        integral.Branch("channel1", &int_channel1, "channel1/I");
+        integral.Branch("channel2", &int_channel2, "channel2/I");
+        integral.Branch("channel3", &int_channel3, "channel3/I");
 
-        LOG_INFO("MAIN", "Measuring 500000 integrated pulses");
-        for (int i = 0; i < 500000; ++i) {
+        LOG_INFO("MAIN", "Measuring 10000 integrated pulses");
+        for (int i = 0; i < 10000; ++i) {
             master->wait_for_irq();
             adc.read_pulse(buf);
-            int_channel0 = -buf.integrate(0, {1340, 1400});
+            int_channel0 = buf.integrate(0);
+            int_channel1 = buf.integrate(1);
+            int_channel2 = buf.integrate(2);
+            int_channel3 = buf.integrate(3);
             integral.Fill();
         }
         integral.Write();

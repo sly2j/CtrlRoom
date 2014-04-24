@@ -12,7 +12,7 @@
 //    NOTE: due to reinterpreting the array of 32-bit integers
 //          as 16-bit shorts on a LITTLE-ENDIAN system, this
 //          gives the final in-memory order of
-//          shorts 2->3->1->2. This routine takes care of this
+//          shorts 2->3->0->1. This routine takes care of this
 //          step.
 
 namespace ctrlroom {
