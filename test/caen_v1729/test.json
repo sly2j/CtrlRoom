@@ -10,11 +10,11 @@
         "model": "CAEN_V1729a",
         "triggerType": "internal",
         "triggerSettings": ["falling"],
-        "triggerThreshold": "-3.5",
+        "triggerThreshold": "-4",
         "preTrig": 10240,
         "postTrig": 50,
         "samplingFrequency": "2GHz",
-        "IRQ": "IRQ7"
+        "IRQ": "IRQ3"
     },
     "defaults": {
         "CAEN_VX2718": {

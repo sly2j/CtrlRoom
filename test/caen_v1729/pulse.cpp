@@ -73,19 +73,27 @@ int main(int argc, char* argv[]) {
         int event {0};
         int sample {0};
         int channel0 {0};
+        int channel1 {0};
+        int channel2 {0};
+        int channel3 {0};
         t.Branch("event", &event, "event/I");
         t.Branch("sample", &sample, "sample/I");
         t.Branch("channel0", &channel0, "channel0/I");
+        t.Branch("channel1", &channel1, "channel1/I");
+        t.Branch("channel2", &channel2, "channel2/I");
+        t.Branch("channel3", &channel3, "channel3/I");
         LOG_INFO("MAIN", "Measuring 100 pulses");
         for (int i = 0; i < 100; ++i) {
             master->wait_for_irq();
             adc.read_pulse(buf);
-            ++event;
-            sample = 0;
-            for (auto i : buf.channel(0)) {
-                channel0 = i;
+            for (unsigned j {0}; j < buf.size(); ++j) {
+                event = i;
+                sample = j;
+                channel0 = buf.get(0, j);
+                channel1 = buf.get(1, j);
+                channel2 = buf.get(2, j);
+                channel3 = buf.get(3, j);
                 t.Fill();
-                ++sample;
             }
         }
         t.Write();
@@ -100,14 +108,14 @@ int main(int argc, char* argv[]) {
         integral.Branch("channel2", &int_channel2, "channel2/I");
         integral.Branch("channel3", &int_channel3, "channel3/I");
 
-        LOG_INFO("MAIN", "Measuring 10000 integrated pulses");
-        for (int i = 0; i < 10000; ++i) {
+        LOG_INFO("MAIN", "Measuring 50000 integrated pulses");
+        for (int i = 0; i < 50000; ++i) {
             master->wait_for_irq();
             adc.read_pulse(buf);
-            int_channel0 = buf.integrate(0);
-            int_channel1 = buf.integrate(1);
-            int_channel2 = buf.integrate(2);
-            int_channel3 = buf.integrate(3);
+            int_channel0 = -buf.integrate(0, {1340, 1400});
+            int_channel1 = -buf.integrate(1, {1340, 1400});
+            int_channel2 = -buf.integrate(2, {1340, 1400});
+            int_channel3 = -buf.integrate(3, {1340, 1400});
             integral.Fill();
         }
         integral.Write();
