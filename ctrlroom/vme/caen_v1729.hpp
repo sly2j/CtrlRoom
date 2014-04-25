@@ -9,6 +9,7 @@
 #include <ctrlroom/util/exception.hpp>
 #include <ctrlroom/util/logger.hpp>
 #include <ctrlroom/util/mixin.hpp>
+#include <ctrlroom/util/io/array.hpp>
 
 #include <algorithm>
 #include <array>
@@ -16,6 +17,7 @@
 #include <string>
 #include <memory>
 #include <cmath>
+#include <fstream>
 
 namespace ctrlroom {
     namespace vme {
@@ -153,6 +155,10 @@ namespace ctrlroom {
                             // optional (defaults to single)
                             static constexpr const char* CHANNEL_MULTIPLEXING_KEY {"channelMultiplexing"};
 
+                            // calibration file names
+                            static constexpr const char* FNAME_PEDESTAL {"pedestal.dat"};
+                            static constexpr const char* FNAME_VERNIER {"vernier.dat"};
+
                             using base_type = slave<Master, A, DSingle, DBLT>;
                             using master_type = Master;
                             using instructions = caen_v1729_impl::instructions<A>;
@@ -169,7 +175,7 @@ namespace ctrlroom {
                             board(  const std::string& identifier,
                                     const ptree& settings,
                                     std::shared_ptr<master_type>& master,
-                                    const calibration_type& cal);
+                                    const std::string& calibration_path);
 
                             ~board();
 
@@ -179,19 +185,21 @@ namespace ctrlroom {
                             size_t read_pulse(buffer_type& buf);
 
                             // calibrate the verniers
-                            static std::pair<vernier_type, vernier_type> calibrate_verniers(
+                            static void calibrate_verniers(
                                     const std::string& identifier,
                                     const ptree& settings,
-                                    std::shared_ptr<master_type>& master);
+                                    std::shared_ptr<master_type>& master,
+                                    const std::string& calibration_path);
 
                             // do <n_acquisitions> random measurements to determine
                             // the board pedestal values
                             // note that the first <MEMORY_HEADER_SIZE> values are irrelevant, 
                             // as they correspond to the memory header
-                            static memory_type measure_pedestal(
+                            static void measure_pedestal(
                                     const std::string& identifier,
                                     const ptree& settings,
                                     std::shared_ptr<master_type>& master,
+                                    const std::string& calibration_path,
                                     size_t n_acquisitions=50);
 
                         private:
@@ -205,6 +213,10 @@ namespace ctrlroom {
                             // end the session (called in the destructor)
                             // issues a RESET instruction
                             static void end(const base_type& b);
+
+                            // load the calibrations
+                            void load_calibrations(
+                                    const std::string& calibration_path);
 
                             std::shared_ptr<const calibration_type> calibration_; 
 
@@ -343,18 +355,11 @@ namespace ctrlroom {
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master,
-                        const board<Master, M, A, DSingle, DBLT>::calibration_type& cal)
+                        const std::string& calibration_path)
                     : base_type{identifier, settings, master} {
                         init(*this);
-                        calibration_.reset(
-                                new calibration_type {
-                                    cal.pedestal,
-                                    cal.vernier_min,
-                                    cal.vernier_max,
-                                    this->conf_.template get<uint16_t>(POSTTRIG_KEY)
-                                }
-                        );
-                        LOG_JUNK(identifier, "start acquisition");
+                        load_calibrations(calibration_path);
+                        LOG_JUNK(identifier, "Start data acquisition mode.");
                         this->write(instructions::START_ACQUISITION, 1);
                     }
             template <class Master, submodel M, 
@@ -387,11 +392,11 @@ namespace ctrlroom {
 
             template <class Master, submodel M, 
                         addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                auto board<Master, M, A, DSingle, DBLT>::calibrate_verniers(
+                void board<Master, M, A, DSingle, DBLT>::calibrate_verniers(
                         const std::string& identifier,
                         const ptree& settings,
-                        std::shared_ptr<Master>& master) 
-                -> std::pair<vernier_type, vernier_type> {
+                        std::shared_ptr<Master>& master,
+                        const std::string& calibration_path) {
                     LOG_INFO(identifier, "Calibrating the verniers");
                     // initialize the arrays
                     vernier_type min, max;
@@ -434,18 +439,22 @@ namespace ctrlroom {
                     }
 
                     end(b);
-                    LOG_JUNK(identifier, "Vernier calibration complete");
-                    return {min, max};
+
+                    LOG_JUNK(identifier, "Writing vernier calibration");
+                    // TODO fix
+                    write_array<typename vernier_type::value_type, 4>(
+                        make_filename(calibration_path, identifier, FNAME_VERNIER),
+                        {min, max});
                 }
 
             template <class Master, submodel M, 
                         addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                auto board<Master, M, A, DSingle, DBLT>::measure_pedestal(
+                void board<Master, M, A, DSingle, DBLT>::measure_pedestal(
                         const std::string& identifier,
                         const ptree& settings,
                         std::shared_ptr<Master>& master,
-                        size_t n_acquisitions) 
-                -> memory_type {
+                        const std::string& calibration_path,
+                        size_t n_acquisitions) {
                     LOG_INFO(identifier, "Measuring the board pedestal.");
                     // init the arrays
                     memory_type ped {0};
@@ -490,8 +499,11 @@ namespace ctrlroom {
                     }
 
                     end(b);
-                    LOG_JUNK(identifier, "Pedestal measurement complete.");
-                    return ped;
+
+                    LOG_JUNK(identifier, "Writing pedestal information");
+                    write_array(
+                        make_filename(calibration_path, identifier, FNAME_PEDESTAL),
+                        ped);
                 }
 
             // the init functions are implemented as static member functions to play
@@ -693,7 +705,37 @@ namespace ctrlroom {
                     LOG_JUNK(b.name(), "Resetting board status");
                     b.write(instructions::RESET, 0x1);
                 }
+
+            // load calibrations
+            template <class Master, submodel M,
+                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
+                void board<Master, M, A, DSingle, DBLT>::load_calibrations(
+                        const std::string& calibration_path) {
+                    LOG_INFO(name(), 
+                            "Loading calibrations from '" + calibration_path + "'");
+
+                    memory_type ped {0};
+                    read_array(
+                        make_filename(calibration_path, name(), FNAME_PEDESTAL),
+                        ped
+                    );
+
+                    vernier_type min {0};
+                    vernier_type max {0};
+                    read_array(
+                        make_filename(calibration_path, name(), FNAME_PEDESTAL),
+                        {&min, &max}
+                    );
                     
+                    calibration_.reset(
+                        new calibration_type {
+                            ped, 
+                            min, 
+                            max, 
+                            this->conf_.template get<uint16_t>(POSTTRIG_KEY)
+                        }
+                    );
+                }
         }
     }
 }

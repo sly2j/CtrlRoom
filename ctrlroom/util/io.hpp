@@ -5,6 +5,8 @@
 
 #include <string>
 
+// TODO automatically make output directory if needed
+
 namespace ctrlroom {
 
     class io_error;
@@ -39,6 +41,13 @@ namespace ctrlroom
                         const std::string& msg="Failed to write to file",
                         const std::string& type="io_write_error");
         };
+
+    std::string make_filename(
+            const std::string& dir,
+            const std::string& base,
+            const std::string& extra="");
+
+
 }
 
 // include all subheaders only if io.hpp is included directly

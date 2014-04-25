@@ -7,7 +7,9 @@
 
 #include <istream>
 #include <ostream>
+#include <vector>
 #include <array>
+#include <fstream>
 
 namespace ctrlroom {
 
@@ -15,13 +17,51 @@ namespace ctrlroom {
     class io_array_length_error;
     class io_array_write_error;
 
+    // read just one array, either from a stream
+    // or a filename
     template <class T, size_t N>
-        std::array<T, N> read_array(std::istream& in);
+        void read_array(
+                std::istream& in,
+                std::array<T, N>& a);
+    template <class T, size_t N>
+        void read_array(
+                const std::string& fname,
+                std::array<T, N>& a);
+    // same for multiple arrays at once
+    template <class T, size_t N>
+        void read_array(
+                std::istream& in,
+                std::vector<std::array<T, N>*> arrays);
+    template <class T, size_t N>
+        void read_array(
+                const std::string& fname,
+                std::vector<std::array<T, N>*> arrays);
 
+    // write just one array, either from a stream
+    // or a filename
     template <class T, size_t N>
         void write_array(
                 std::ostream& out, 
                 const std::array<T, N>& a,
+                const size_t ncols = 1,
+                const std::string& col_separator = " ");
+    template <class T, size_t N>
+        void write_array(
+                const std::string& fname,
+                const std::array<T, N>& a,
+                const size_t ncols = 1,
+                const std::string& col_separator = " ");
+    // same for multiple arrays at once
+    template <class T, size_t N>
+        void write_array(
+                std::ostream& out, 
+                std::vector<std::array<T, N>> arrays,
+                const size_t ncols = 1,
+                const std::string& col_separator = " ");
+    template <class T, size_t N>
+        void write_array(
+                const std::string& fname,
+                std::vector<std::array<T, N>> arrays,
                 const size_t ncols = 1,
                 const std::string& col_separator = " ");
 
@@ -60,27 +100,55 @@ namespace ctrlroom
 //////////////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
     template <class T, size_t N>
-        std::array<T, N> read_array(std::istream& in) {
+        void read_array(
+                std::istream& in,
+                std::array<T, N>& a) {
             if (!in) {
                 throw io_array_read_error{};
             }
-            std::array<T, N> a;
             for (size_t i {0}; i < N; ++i) {
                 if (!in) {
                     throw io_array_length_error{N};
                 }
                 in >> a[i];
             }
-            return a;
+        }
+    template <class T, size_t N>
+        void read_array(
+                const std::string& fname,
+                std::array<T, N>& a) {
+            std::ifstream f {fname};
+            read_array(f, a);
+        }
+    template <class T, size_t N>
+        void read_array(
+                std::istream& in,
+                std::vector<std::array<T, N>&> arrays) {
+            for (auto a : arrays) {
+                if (a) {
+                    read_array(in, *a);
+                }
+            }
+        }
+    template <class T, size_t N>
+        void read_array(
+                const std::string& fname,
+                std::vector<std::array<T, N>*> arrays) {
+            std::ifstream f {fname};
+            for (auto& a : arrays) {
+                if (a) {
+                    read_array(f, *a);
+                }
+            }
         }
 
     template <class T, size_t N>
         void write_array(
                 std::ostream& out, 
-                const std::array<T, N> a,
+                const std::array<T, N>& a,
                 const size_t ncols,
                 const std::string& col_separator) {
-            if (N % a) {
+            if (ncols == 0 || N % ncols) {
                 throw io_array_write_error{};
             }
             unsigned col {0};
@@ -97,6 +165,36 @@ namespace ctrlroom {
                     col = 0;
                     out << "\n";
                 }
+            }
+        }
+    template <class T, size_t N>
+        void write_array(
+                const std::string& fname,
+                const std::array<T, N>& a,
+                const size_t ncols,
+                const std::string& col_separator) {
+            std::ofstream f {fname};
+            write_array(f, a, ncols, col_separator);
+        }
+    template <class T, size_t N>
+        void write_array(
+                std::ostream& out, 
+                std::vector<std::array<T, N>> arrays,
+                const size_t ncols,
+                const std::string& col_separator) {
+            for (const auto& a : arrays) {
+                write_array(out, a, ncols, col_separator);
+            }
+        }
+    template <class T, size_t N>
+        void write_array(
+                const std::string& fname,
+                std::vector <std::array<T, N>> arrays,
+                const size_t ncols,
+                const std::string& col_separator) {
+            std::ofstream f {fname};
+            for (const auto& a : arrays) {
+                write_array(f, a, ncols, col_separator);
             }
         }
 }
