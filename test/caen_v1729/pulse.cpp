@@ -1,7 +1,3 @@
-
-#define private public
-#define protected public
-
 #include <ctrlroom/vme/caen_bridge.hpp>
 #include <ctrlroom/vme/caen_v1729.hpp>
 #include <ctrlroom/vme/vme64.hpp>
@@ -17,7 +13,6 @@
 #include <memory>
 #include <string>
 #include <exception>
-#include <typeinfo> //DBG
 
 #include <TFile.h>
 #include <TTree.h>
@@ -47,14 +42,22 @@ int main(int argc, char* argv[]) {
             new bridge_type{"bridge", config}
         };
         LOG_INFO("MAIN", "Calibrating ADC pedestals");
-        auto pedestal = adc_type::measure_pedestal("ADC", config, master, 100);
+        adc_type::measure_pedestal(
+            "ADC", 
+            config, 
+            master, 
+            "/daq/pmtcoat/calibrations/001", 
+            100);
         //adc_type::memory_type pedestal {0};
         LOG_INFO("MAIN", "Calibrating ADC verniers");
-        //auto vernier = adc_type::calibrate_verniers("ADC", config, master);
-        std::pair<adc_type::vernier_type, adc_type::vernier_type> vernier {
-            {8588, 8680, 8649, 8588}, 
-            {10293, 10429, 10385, 10299}
-        };
+        adc_type::calibrate_verniers("ADC", 
+            config, 
+            master, 
+            "/daq/pmtcoat/calibrations/001");
+        //std::pair<adc_type::vernier_type, adc_type::vernier_type> vernier {
+        //    {8588, 8680, 8649, 8588}, 
+        //    {10293, 10429, 10385, 10299}
+        //};
 
         LOG_WARNING("MAIN", "Hookup your wires and press enter to continue...");
         std::cin.ignore();
@@ -63,7 +66,7 @@ int main(int argc, char* argv[]) {
             "ADC", 
             config, 
             master, 
-            {pedestal, vernier.first, vernier.second}
+            "/daq/pmtcoat/calibrations/001"
         };
 
         adc_type::buffer_type buf;
