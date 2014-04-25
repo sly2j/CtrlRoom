@@ -33,7 +33,8 @@ find_package(Boost COMPONENTS program_options REQUIRED)
 ## CAENVME libraries required, except  for local development on a macbook, 
 ## where the VME libraries aren't present
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    find_package(CAENVME)
+    set(CAENVME_INCLUDE_DIRS tmpincludes)
+    set(CAENVME_DEFINITIONS -DLINUX)
 ELSE ()
     find_package(CAENVME REQUIRED)
 ENDIF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -48,7 +49,12 @@ add_definitions(${CAENVME_DEFINITIONS})
 
 add_subdirectory(ctrlroom/util)
 add_subdirectory(ctrlroom/vme)
-add_subdirectory(test)
+
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    # do nothing
+ELSE ()
+    add_subdirectory(test)
+ENDIF ()
 
 add_library(ctrlroom SHARED ctrlroom/board.cpp)
 target_link_libraries(ctrlroom util vme
