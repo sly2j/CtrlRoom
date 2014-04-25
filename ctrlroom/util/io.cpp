@@ -1,19 +1,21 @@
 #include "io.hpp"
 
-using namespace ctrlroom;
-
+namespace ctrlroom {
 //////////////////////////////////////////////////////////////////////////////////////////
 // filename
 //////////////////////////////////////////////////////////////////////////////////////////
 std::string make_filename(
         const std::string& dir,
-        const std::string& name_root,
-        const std::string& name) {
+        const std::string& base,
+        const std::string& extra) {
     std::string ret {dir};
     if (dir.back() != '/') {
         ret += "/";
     }
-    ret += name_root + name;
+    ret += base;
+    if (!extra.empty()) {
+        ret += "." + extra;
+    }
     return ret;
 }
 
@@ -35,3 +37,5 @@ io_write_error::io_write_error(
         const std::string& msg,
         const std::string& type)
     : io_error{msg, type} {}
+
+}

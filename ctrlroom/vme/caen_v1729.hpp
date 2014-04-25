@@ -444,7 +444,8 @@ namespace ctrlroom {
                     // TODO fix
                     write_array<typename vernier_type::value_type, 4>(
                         make_filename(calibration_path, identifier, FNAME_VERNIER),
-                        {min, max});
+                        {min, max},
+                        N_CHANNELS);
                 }
 
             template <class Master, submodel M, 
@@ -503,7 +504,8 @@ namespace ctrlroom {
                     LOG_JUNK(identifier, "Writing pedestal information");
                     write_array(
                         make_filename(calibration_path, identifier, FNAME_PEDESTAL),
-                        ped);
+                        ped,
+                        N_CHANNELS);
                 }
 
             // the init functions are implemented as static member functions to play
@@ -723,7 +725,7 @@ namespace ctrlroom {
                     vernier_type min {0};
                     vernier_type max {0};
                     read_array<typename vernier_type::value_type, 4>(
-                        make_filename(calibration_path, name(), FNAME_PEDESTAL),
+                        make_filename(calibration_path, name(), FNAME_VERNIER),
                         {&min, &max}
                     );
                     

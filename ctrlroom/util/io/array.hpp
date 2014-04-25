@@ -123,7 +123,7 @@ namespace ctrlroom {
     template <class T, size_t N>
         void read_array(
                 std::istream& in,
-                std::vector<std::array<T, N>&> arrays) {
+                std::vector<std::array<T, N>*> arrays) {
             for (auto a : arrays) {
                 if (a) {
                     read_array(in, *a);
@@ -161,7 +161,7 @@ namespace ctrlroom {
                 }
                 out << val;
                 ++col;
-                if (col > ncols) {
+                if (col >= ncols) {
                     col = 0;
                     out << "\n";
                 }

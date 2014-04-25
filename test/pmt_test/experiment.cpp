@@ -18,6 +18,11 @@
 #include <TFile.h>
 #include <TTree.h>
 
+#include <TCanvas.h>
+#include <TH1F.h>
+
+#include <boost/filesystem.hpp>
+
 using namespace ctrlroom;
 
 using bridge_type = vme::caen_bridge;
@@ -33,17 +38,19 @@ class experiment {
     public:
         // config file keys
         static constexpr const char* EXPERIMENT_KEY {"experiment"};
-        static constexpr const char* CALIBRATION_KEY {"calibrationDirectory"};
         static constexpr const char* NAME_KEY {"name"};
+        static constexpr const char* CALIBRATION_KEY {"calibrationDirectory"};
         static constexpr const char* OUTDIR_KEY {"outputDirectory"};
         static constexpr const char* N_PULSES_KEY {"nPulses"};
         static constexpr const char* N_INTEGRALS_KEY {"nIntegratedPulses"};
         static constexpr const char* INTEGRATION_RANGE_KEY {"integrationRange"};
+        static constexpr const char* HISTO_RANGE_KEY {"histoRange"};
 
         // constants
         static constexpr const char* MASTER_NAME {"bridge"};
         static constexpr const char* ADC_NAME {"ADC"};
         static constexpr const char* OUTPUT_RESULTS_FNAME {"pulses.root"};
+        static constexpr const char* OUTPUT_PLOTS_FNAME {"histos.pdf"};
         static constexpr const char* OUTPUT_CONFIG_FNAME {"config.json"};
         static constexpr const char* OUTPUT_PULSES_TREE {"pulse"};
         static constexpr const char* OUTPUT_INTEGRALS_TREE {"integrated"};
@@ -64,17 +71,34 @@ class experiment {
             , ofile_ {
                 make_filename(
                     conf_.get<std::string>(OUTDIR_KEY),
-                    conf_.get<std::string>(OUTPUT_RESULTS_FNAME)).c_str()}
+                    OUTPUT_RESULTS_FNAME).c_str(), "recreate"}
             , config_fname_ {
                 make_filename(
                     conf_.get<std::string>(OUTDIR_KEY),
-                    conf_.get<std::string>(OUTPUT_CONFIG_FNAME))}
+                    OUTPUT_CONFIG_FNAME)}
+            , plots_fname_ {
+                make_filename(
+                    conf_.get<std::string>(OUTDIR_KEY),
+                    OUTPUT_PLOTS_FNAME)}
             , name_ {
                     conf_.get<std::string>(NAME_KEY)}
             , n_pulses_ {conf_.get<size_t>(N_PULSES_KEY)}
             , n_integrals_ {conf_.get<size_t>(N_INTEGRALS_KEY)} {
                 auto range = conf_.get_vector<size_t>(INTEGRATION_RANGE_KEY);
+                if (range.size() != 2) {
+                    throw conf_.translation_error(INTEGRATION_RANGE_KEY, stringify(range));
+                }
+                integration_range_ = {range[0], range[1]};
+
+                auto range2 = conf_.get_vector<int>(HISTO_RANGE_KEY);
+                if (range2.size() != 2) {
+                    throw conf_.translation_error(HISTO_RANGE_KEY, stringify(range));
+                }
+                histo_range_ = {range2[0], range2[1]};
+
                 LOG_INFO(name_, "Experiment initialized");
+
+                boost::filesystem::create_directories(conf_.get<std::string>(OUTDIR_KEY));
 
                 run();
             }
@@ -92,9 +116,11 @@ class experiment {
 
         static void calibrate(ptree& config) {
             configuration conf {EXPERIMENT_KEY, config, "defaults", NAME_KEY};
+            boost::filesystem::create_directories(conf.get<std::string>(CALIBRATION_KEY));
             std::shared_ptr<bridge_type> master {
                 new bridge_type{MASTER_NAME, config}
             };
+
             adc_type::measure_pedestal(
                     ADC_NAME,
                     config,
@@ -157,16 +183,34 @@ class experiment {
             t.Branch("channel2", &channel[2], "channel2/I");
             t.Branch("channel3", &channel[3], "channel3/I");
 
+            TH1F* histos[4];
+            const char* ch[] {"channel0", "channel1", "channel2", "channel3"};
+            for (size_t i {0}; i < 4; ++i) {
+                histos[i] = new TH1F(ch[i], ch[i],
+                                    (n_integrals_) / 100,
+                                    histo_range_.first, histo_range_.second);
+            }
+
             adc_type::buffer_type buf;
-            for (size_t i {0}; i < n_pulses_; ++i) {
+            for (size_t i {0}; i < n_integrals_; ++i) {
                 master_->wait_for_irq();
                 adc_.read_pulse(buf);
                 for (unsigned k {0}; k < 4; ++k) {
                     channel[k] = -buf.integrate(k, integration_range_);
+                    histos[k]->Fill(channel[k]);
                 }
                 t.Fill();
             }
             t.Write();
+            
+            TCanvas c ("ADC chan", "ADC chan", 800, 600);
+            c.SetLogy();
+            c.Divide(2,2);
+            for (int i = 0; i < 4; ++i) {
+                c.cd(1+i);
+                histos[i]->Draw();
+            }
+            c.Print(plots_fname_.c_str());
         }
 
         configuration conf_;
@@ -175,12 +219,14 @@ class experiment {
         TFile ofile_;
 
         const std::string config_fname_;
+        const std::string plots_fname_;
         const std::string name_;
 
         const size_t n_pulses_;
         const size_t n_integrals_;
 
         std::pair<size_t, size_t> integration_range_;
+        std::pair<int, int> histo_range_;
 };
 
 int main(int argc, char* argv[]) {
