@@ -2,7 +2,7 @@
     "experiment": {
         "name": "SPE",
         "calibrationDirectory": "/daq/pmt_coat/calibrations/2014-04-25",
-        "outputDirectory": "/daq/pmt_coat/prod/SPE/run00001",
+        "outputDirectory": "/daq/pmt_coat/prod/SPE/run00002_right",
         "nPulses": "50",
         "nIntegratedPulses": "100000",
         "integrationRange": [1340, 1400],
@@ -32,7 +32,7 @@
         "samplingFrequency": "2GHz",
         "IRQ": "IRQ3",
         "channels": [
-            "left", 
+            "right", 
             "none", 
             "none", 
             "none"

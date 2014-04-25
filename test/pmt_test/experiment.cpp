@@ -8,6 +8,8 @@
 #include <ctrlroom/util/assert.hpp>
 #include <ctrlroom/util/logger.hpp>
 #include <ctrlroom/util/io.hpp>
+#include <ctrlroom/util/root.hpp>
+
 
 #include <array>
 #include <vector>
@@ -19,7 +21,7 @@
 #include <TTree.h>
 
 #include <TCanvas.h>
-#include <TH1F.h>
+#include <TH1I.h>
 
 #include <boost/filesystem.hpp>
 
@@ -147,16 +149,16 @@ class experiment {
 
         void measure_pulses() {
             ofile_.cd();
-            TTree t {OUTPUT_PULSES_TREE, OUTPUT_PULSES_TREE};
+            TTree* t = new TTree {OUTPUT_PULSES_TREE, OUTPUT_PULSES_TREE};
             int channel[4] {0};
             int event {0};
             int sample {0};
-            t.Branch("event", &event, "event/I");
-            t.Branch("sample", &sample, "sample/I");
-            t.Branch("channel0", &channel[0], "channel0/I");
-            t.Branch("channel1", &channel[1], "channel1/I");
-            t.Branch("channel2", &channel[2], "channel2/I");
-            t.Branch("channel3", &channel[3], "channel3/I");
+            t->Branch("event", &event, "event/I");
+            t->Branch("sample", &sample, "sample/I");
+            t->Branch("channel0", &channel[0], "channel0/I");
+            t->Branch("channel1", &channel[1], "channel1/I");
+            t->Branch("channel2", &channel[2], "channel2/I");
+            t->Branch("channel3", &channel[3], "channel3/I");
 
             adc_type::buffer_type buf;
             for (size_t i {0}; i < n_pulses_; ++i) {
@@ -168,26 +170,26 @@ class experiment {
                     for (unsigned k {0}; k < 4; ++k) {
                         channel[k] = buf.get(k, j);
                     }
-                    t.Fill();
+                    t->Fill();
                 }
             }
-            t.Write();
+            t->Write();
         }
 
         void measure_integrals() {
             ofile_.cd();
-            TTree t {OUTPUT_INTEGRALS_TREE, OUTPUT_INTEGRALS_TREE};
+            TTree* t = new TTree {OUTPUT_INTEGRALS_TREE, OUTPUT_INTEGRALS_TREE};
             int channel[4] {0};
-            t.Branch("channel0", &channel[0], "channel0/I");
-            t.Branch("channel1", &channel[1], "channel1/I");
-            t.Branch("channel2", &channel[2], "channel2/I");
-            t.Branch("channel3", &channel[3], "channel3/I");
+            t->Branch("channel0", &channel[0], "channel0/I");
+            t->Branch("channel1", &channel[1], "channel1/I");
+            t->Branch("channel2", &channel[2], "channel2/I");
+            t->Branch("channel3", &channel[3], "channel3/I");
 
-            TH1F* histos[4];
+            TH1I* histos[4];
             const char* ch[] {"channel0", "channel1", "channel2", "channel3"};
             for (size_t i {0}; i < 4; ++i) {
-                histos[i] = new TH1F(ch[i], ch[i],
-                                    (n_integrals_) / 100,
+                histos[i] = new TH1I(ch[i], ch[i],
+                                    (n_integrals_) / 300,
                                     histo_range_.first, histo_range_.second);
             }
 
@@ -199,15 +201,15 @@ class experiment {
                     channel[k] = -buf.integrate(k, integration_range_);
                     histos[k]->Fill(channel[k]);
                 }
-                t.Fill();
+                t->Fill();
             }
-            t.Write();
+            t->Write();
             
             TCanvas c ("ADC chan", "ADC chan", 800, 600);
-            c.SetLogy();
             c.Divide(2,2);
             for (int i = 0; i < 4; ++i) {
                 c.cd(1+i);
+                //gPad->SetLogy();
                 histos[i]->Draw();
             }
             c.Print(plots_fname_.c_str());
@@ -230,6 +232,9 @@ class experiment {
 };
 
 int main(int argc, char* argv[]) {
+
+    // suppress ROOT signal handling
+    root_suppress_signals();
 
     global::logger.set_level(log_level::JUNK2);
 
