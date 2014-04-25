@@ -722,7 +722,7 @@ namespace ctrlroom {
 
                     vernier_type min {0};
                     vernier_type max {0};
-                    read_array(
+                    read_array<typename vernier_type::value_type, 4>(
                         make_filename(calibration_path, name(), FNAME_PEDESTAL),
                         {&min, &max}
                     );

@@ -50,11 +50,11 @@ add_definitions(${CAENVME_DEFINITIONS})
 add_subdirectory(ctrlroom/util)
 add_subdirectory(ctrlroom/vme)
 
-IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     # do nothing
-ELSE ()
+    #ELSE ()
     add_subdirectory(test)
-ENDIF ()
+    #ENDIF ()
 
 add_library(ctrlroom SHARED ctrlroom/board.cpp)
 target_link_libraries(ctrlroom util vme
