@@ -35,6 +35,17 @@ using adc_type = vme::caen_v1729a<bridge_type,
 
 const std::string CALIBRATION_CMD {"calibrate"};
 
+struct create_path_proxy {
+    create_path_proxy(const configuration& conf, 
+                      const std::string& path_key)
+        : path {conf.get<std::string>(path_key)} {
+            if (boost::filesystem::exists(path)) {
+                throw conf.value_error(path_key, path);
+            }
+            boost::filesystem::create_directories(path);
+        }
+    const std::string path;
+};
 
 class experiment {
     public:
@@ -63,6 +74,9 @@ class experiment {
                 config, 
                 "defaults", 
                 NAME_KEY}
+            , path_proxy_ {
+                conf_,
+                OUTDIR_KEY}
             , master_ {
                 new bridge_type{MASTER_NAME, config}}
             , adc_ {
@@ -100,8 +114,6 @@ class experiment {
 
                 LOG_INFO(name_, "Experiment initialized");
 
-                boost::filesystem::create_directories(conf_.get<std::string>(OUTDIR_KEY));
-
                 run();
             }
 
@@ -118,7 +130,21 @@ class experiment {
 
         static void calibrate(ptree& config) {
             configuration conf {EXPERIMENT_KEY, config, "defaults", NAME_KEY};
-            boost::filesystem::create_directories(conf.get<std::string>(CALIBRATION_KEY));
+
+            create_path_proxy path_proxy {
+                conf,
+                CALIBRATION_KEY
+            };
+
+            const std::string path {path_proxy.path};
+
+            // make sure we don't overwrite any calibrations
+            if (boost::filesystem::exists(conf.get<std::string>(path))) {
+                throw conf.value_error(CALIBRATION_KEY, path);
+            }
+
+            boost::filesystem::create_directories(path);
+
             std::shared_ptr<bridge_type> master {
                 new bridge_type{MASTER_NAME, config}
             };
@@ -149,16 +175,16 @@ class experiment {
 
         void measure_pulses() {
             ofile_.cd();
-            TTree* t = new TTree {OUTPUT_PULSES_TREE, OUTPUT_PULSES_TREE};
+            TTree t {OUTPUT_PULSES_TREE, OUTPUT_PULSES_TREE};
             int channel[4] {0};
             int event {0};
             int sample {0};
-            t->Branch("event", &event, "event/I");
-            t->Branch("sample", &sample, "sample/I");
-            t->Branch("channel0", &channel[0], "channel0/I");
-            t->Branch("channel1", &channel[1], "channel1/I");
-            t->Branch("channel2", &channel[2], "channel2/I");
-            t->Branch("channel3", &channel[3], "channel3/I");
+            t.Branch("event", &event, "event/I");
+            t.Branch("sample", &sample, "sample/I");
+            t.Branch("channel0", &channel[0], "channel0/I");
+            t.Branch("channel1", &channel[1], "channel1/I");
+            t.Branch("channel2", &channel[2], "channel2/I");
+            t.Branch("channel3", &channel[3], "channel3/I");
 
             adc_type::buffer_type buf;
             for (size_t i {0}; i < n_pulses_; ++i) {
@@ -170,20 +196,20 @@ class experiment {
                     for (unsigned k {0}; k < 4; ++k) {
                         channel[k] = buf.get(k, j);
                     }
-                    t->Fill();
+                    t.Fill();
                 }
             }
-            t->Write();
+            t.Write();
         }
 
         void measure_integrals() {
             ofile_.cd();
-            TTree* t = new TTree {OUTPUT_INTEGRALS_TREE, OUTPUT_INTEGRALS_TREE};
+            TTree t {OUTPUT_INTEGRALS_TREE, OUTPUT_INTEGRALS_TREE};
             int channel[4] {0};
-            t->Branch("channel0", &channel[0], "channel0/I");
-            t->Branch("channel1", &channel[1], "channel1/I");
-            t->Branch("channel2", &channel[2], "channel2/I");
-            t->Branch("channel3", &channel[3], "channel3/I");
+            t.Branch("channel0", &channel[0], "channel0/I");
+            t.Branch("channel1", &channel[1], "channel1/I");
+            t.Branch("channel2", &channel[2], "channel2/I");
+            t.Branch("channel3", &channel[3], "channel3/I");
 
             TH1I* histos[4];
             const char* ch[] {"channel0", "channel1", "channel2", "channel3"};
@@ -201,9 +227,9 @@ class experiment {
                     channel[k] = -buf.integrate(k, integration_range_);
                     histos[k]->Fill(channel[k]);
                 }
-                t->Fill();
+                t.Fill();
             }
-            t->Write();
+            t.Write();
             
             TCanvas c ("ADC chan", "ADC chan", 800, 600);
             c.Divide(2,2);
@@ -216,6 +242,7 @@ class experiment {
         }
 
         configuration conf_;
+        create_path_proxy path_proxy_;
         std::shared_ptr<bridge_type> master_;
         adc_type adc_;
         TFile ofile_;
