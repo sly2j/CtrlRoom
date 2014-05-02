@@ -138,13 +138,6 @@ class experiment {
 
             const std::string path {path_proxy.path};
 
-            // make sure we don't overwrite any calibrations
-            if (boost::filesystem::exists(conf.get<std::string>(path))) {
-                throw conf.value_error(CALIBRATION_KEY, path);
-            }
-
-            boost::filesystem::create_directories(path);
-
             std::shared_ptr<bridge_type> master {
                 new bridge_type{MASTER_NAME, config}
             };
@@ -153,13 +146,13 @@ class experiment {
                     ADC_NAME,
                     config,
                     master,
-                    conf.get<std::string>(CALIBRATION_KEY),
+                    path,
                     100);
             adc_type::calibrate_verniers(
                     ADC_NAME,
                     config,
                     master,
-                    conf.get<std::string>(CALIBRATION_KEY));
+                    path);
         }
 
     private:
