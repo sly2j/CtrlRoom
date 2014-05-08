@@ -16,25 +16,21 @@
 //          step.
 
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
-            template <addressing_mode A>
-                struct channel_index;
-            template <>
-                struct channel_index<addressing_mode::A24> {
-                    static size_t calc(const size_t chan) {
-                        return properties::N_CHANNELS - (chan + 1);
-                    }
-                };
-            template <>
-                struct channel_index<addressing_mode::A32> {
-                    static size_t calc(const size_t chan) {
-                        return (chan + properties::N_CHANNELS / 2) 
-                            % properties::N_CHANNELS;
-                    }
-                };
-        }
-    }
+namespace vme {
+namespace caen_v1729_impl {
+template <addressing_mode A> struct channel_index;
+template <> struct channel_index<addressing_mode::A24> {
+  static size_t calc(const size_t chan) {
+    return properties::N_CHANNELS - (chan + 1);
+  }
+};
+template <> struct channel_index<addressing_mode::A32> {
+  static size_t calc(const size_t chan) {
+    return (chan + properties::N_CHANNELS / 2) % properties::N_CHANNELS;
+  }
+};
+}
+}
 }
 
 #endif

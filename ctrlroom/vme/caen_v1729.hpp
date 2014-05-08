@@ -20,977 +20,840 @@
 #include <fstream>
 
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
+namespace vme {
+namespace caen_v1729_impl {
 
-            // calibration POD struct
-            template <class Board> 
-                struct calibration {
-                    using board_type = Board;
-                    using memory_type = typename board_type::memory_type;
-                    using vernier_type = typename board_type::vernier_type;
+// calibration POD struct
+template <class Board> struct calibration {
+  using board_type = Board;
+  using memory_type = typename board_type::memory_type;
+  using vernier_type = typename board_type::vernier_type;
 
-                    // The posttrig argument is optional. 
-                    // The user should not touch this variable, as the V1729 board
-                    // class will overwrite that variable with the correct value
-                    calibration(
-                            const memory_type& ped, 
-                            const vernier_type& min, 
-                            const vernier_type& max,
-                            const size_t post = 0);
+  // The posttrig argument is optional.
+  // The user should not touch this variable, as the V1729 board
+  // class will overwrite that variable with the correct value
+  calibration(const memory_type &ped, const vernier_type &min,
+              const vernier_type &max, const size_t post = 0);
 
-                    memory_type pedestal;
-                    vernier_type vernier_min;
-                    vernier_type vernier_max;
-                    size_t posttrig;
-                };
+  memory_type pedestal;
+  vernier_type vernier_min;
+  vernier_type vernier_max;
+  size_t posttrig;
+};
 
-            // an array-like "channel view" interface to a V1729 buffer,
-            // as well as a related iterator
-            template <class Board>
-                struct channel_view;
-            template <class View>
-                struct channel_view_iterator;
+// an array-like "channel view" interface to a V1729 buffer,
+// as well as a related iterator
+template <class Board> struct channel_view;
+template <class View> struct channel_view_iterator;
 
-            // buffer to store measured ADC data, and transparently provide
-            // intuitive access to the underlying circular buffer
-            template <class Board>
-                class buffer {
-                    public:
-                        using board_type = Board;
-                        using calibration_type = typename board_type::calibration_type;
-                        using memory_type = typename board_type::memory_type;
-                        using value_type = typename board_type::value_type;
-                        using view_type = channel_view<buffer>;
+// buffer to store measured ADC data, and transparently provide
+// intuitive access to the underlying circular buffer
+template <class Board> class buffer {
+public:
+  using board_type = Board;
+  using calibration_type = typename board_type::calibration_type;
+  using memory_type = typename board_type::memory_type;
+  using value_type = typename board_type::value_type;
+  using view_type = channel_view<buffer>;
 
-                        // return value at index <idx> for channel <chan> from the buffer,
-                        // taking care of the circular buffer unfolding.
-                        // Requires a valid calibration to be loaded! (will _segfault_ if
-                        // not the case!)
-                        value_type get(const size_t chan, size_t idx) const;
+  // return value at index <idx> for channel <chan> from the buffer,
+  // taking care of the circular buffer unfolding.
+  // Requires a valid calibration to be loaded! (will _segfault_ if
+  // not the case!)
+  value_type get(const size_t chan, size_t idx) const;
 
-                        // get the integrated ADC response
-                        // (the range-less version intergrates between min and max
-                        value_type integrate(
-                                const size_t chan, 
-                                const std::pair<size_t, size_t>& range) const;
-                        value_type integrate (const size_t chan) const;
+  // get the integrated ADC response
+  // (the range-less version intergrates between min and max
+  value_type integrate(const size_t chan,
+                       const std::pair<size_t, size_t> &range) const;
+  value_type integrate(const size_t chan) const;
 
-                        constexpr size_t size() const;
-                        
-                        // get a channel view interface to a channel
-                        // for more elegant array-like access
-                        view_type channel(const size_t chan) const;
+  constexpr size_t size() const;
 
-                    private:
-                        value_type mask(const value_type val) const;
-                        
-                        // do the index magic to address the circular buffer
-                        // returns the internal buffer address for this index
-                        size_t fold_index(
-                                size_t idx) const;
+  // get a channel view interface to a channel
+  // for more elegant array-like access
+  view_type channel(const size_t chan) const;
 
-                        // calibrate the buffer, called by the V1729 board class
-                        // after the buffer is filled with new data
-                        void calibrate(
-                                std::shared_ptr<const calibration_type>& cal,
-                                const size_t trig_rec);
+private:
+  value_type mask(const value_type val) const;
 
-                        // helper function for calibrate() to get the correct vernier offset
-                        size_t vernier();
+  // do the index magic to address the circular buffer
+  // returns the internal buffer address for this index
+  size_t fold_index(size_t idx) const;
 
-                        memory_type buffer_;
-                        size_t buffer_end_;
-                        std::shared_ptr<const calibration_type> calibration_;
+  // calibrate the buffer, called by the V1729 board class
+  // after the buffer is filled with new data
+  void calibrate(std::shared_ptr<const calibration_type> &cal,
+                 const size_t trig_rec);
 
-                        friend board_type; 
-                };
+  // helper function for calibrate() to get the correct vernier offset
+  size_t vernier();
 
-            // Generic implementation of the V1729 and v1729a board
-            // specific typedefs for either boards are provided below
-            // (in the main ctrlroom::vme namespace)
-            // Supported modes (addressing, single, BLT):
-            //      * A24/D16/D16
-            //      * A32/D32/D32
-            //      * A32/D32/MBLT
-            // CONFIGURATION FILE OPTIONS:
-            //      * Trigger type: <id>.triggerType (internal, external, ...)
-            //      * Trigger settings: <id>.triggerSettings ([rising, ...])
-            //      * Trigger threshold: <id>.triggerThreshold (-1000mV...1000mV)
-            //      * PRETRIG: <id>.pretrig (MIN, ... 0xFFFF)
-            //      * POSTTRIG: <id>.postTrig (7, ... 0xFFFF)
-            //      * sampling freq.: <id>.samplingFrequency (2GHz, 1GHz)
-            //  optional EXPERT USAGE ONLY (will cause calibrations to hang!!!)
-            //  (default to true)
-            //      * IRQ: <id>.enableIRQ (true, false)
-            //      * auto restart acquisition: <id>.autoRestartAcq (true, false)
-            //  optional, default to [ALL]
-            //      * Trigger channel source: <id>.triggerChannelSource ([CH0,CH1,CH2,CH3,ALL])
-            //      * Channel mask: <id>.channelMask ([CH0, CH1, CH2, CH3, ALL])
-            //  optional, defualt to single
-            //      * multiplexing mode: <id>.channelMultiplexing (single, duplex, quadruplex)
-            template <class Master, 
-                            submodel M,
-                            addressing_mode A, 
-                            transfer_mode DSingle = transfer_mode::D32,
-                            transfer_mode DBLT = transfer_mode::MBLT>
-                class board
-                    : public slave<Master, A, DSingle, DBLT>
-                    , public properties
-                    , public extra_properties<M>
-                    , public validate_mode<A, DSingle, DBLT> {
-                        public: 
-                            static constexpr const char* TRIGGER_TYPE_KEY {"triggerType"};
-                            static constexpr const char* TRIGGER_SETTINGS_KEY {"triggerSettings"};
-                            static constexpr const char* TRIGGER_THRESHOLD_KEY {"triggerThreshold"};
-                            static constexpr const char* PRETRIG_KEY {"preTrig"};
-                            static constexpr const char* POSTTRIG_KEY {"postTrig"};
-                            static constexpr const char* SAMPLING_FREQUENCY_KEY {"samplingFrequency"};
-                            // optional (default to true)
-                            static constexpr const char* ENABLE_IRQ_KEY {"enableIRQ"};
-                            static constexpr const char* AUTO_RESTART_ACQ_KEY {"autoRestartAcq"};
-                            // optional (default to all)
-                            static constexpr const char* TRIGGER_CHANNEL_SOURCE_KEY {"triggerChannelSource"};
-                            static constexpr const char* CHANNEL_MASK_KEY {"channelMask"};
-                            // optional (defaults to single)
-                            static constexpr const char* CHANNEL_MULTIPLEXING_KEY {"channelMultiplexing"};
+  memory_type buffer_;
+  size_t buffer_end_;
+  std::shared_ptr<const calibration_type> calibration_;
 
-                            // calibration file names
-                            static constexpr const char* FNAME_PEDESTAL {"pedestal.dat"};
-                            static constexpr const char* FNAME_VERNIER {"vernier.dat"};
+  friend board_type;
+};
 
-                            using base_type = slave<Master, A, DSingle, DBLT>;
-                            using master_type = Master;
-                            using instructions = caen_v1729_impl::instructions<A>;
-                            using buffer_type = buffer<board>;
-                            using calibration_type = calibration<board>;
-                            using single_data_type = typename base_type::single_data_type;
-                            using blt_data_type = typename base_type::blt_data_type;
-                            using address_type = typename base_type::address_type;
-                            using base_type::name;
-                            using base_type::addressing;
-                            using base_type::single_transfer;
-                            using base_type::blt_transfer;
+// Generic implementation of the V1729 and v1729a board
+// specific typedefs for either boards are provided below
+// (in the main ctrlroom::vme namespace)
+// Supported modes (addressing, single, BLT):
+//      * A24/D16/D16
+//      * A32/D32/D32
+//      * A32/D32/MBLT
+// CONFIGURATION FILE OPTIONS:
+//      * Trigger type: <id>.triggerType (internal, external, ...)
+//      * Trigger settings: <id>.triggerSettings ([rising, ...])
+//      * Trigger threshold: <id>.triggerThreshold (-1000mV...1000mV)
+//      * PRETRIG: <id>.pretrig (MIN, ... 0xFFFF)
+//      * POSTTRIG: <id>.postTrig (7, ... 0xFFFF)
+//      * sampling freq.: <id>.samplingFrequency (2GHz, 1GHz)
+//  optional EXPERT USAGE ONLY (will cause calibrations to hang!!!)
+//  (default to true)
+//      * IRQ: <id>.enableIRQ (true, false)
+//      * auto restart acquisition: <id>.autoRestartAcq (true, false)
+//  optional, default to [ALL]
+//      * Trigger channel source: <id>.triggerChannelSource
+// ([CH0,CH1,CH2,CH3,ALL])
+//      * Channel mask: <id>.channelMask ([CH0, CH1, CH2, CH3, ALL])
+//  optional, defualt to single
+//      * multiplexing mode: <id>.channelMultiplexing (single, duplex,
+// quadruplex)
+template <class Master, submodel M, addressing_mode A,
+          transfer_mode DSingle = transfer_mode::D32,
+          transfer_mode DBLT = transfer_mode::MBLT>
+class board : public slave<Master, A, DSingle, DBLT>,
+              public properties,
+              public extra_properties<M>,
+              public validate_mode<A, DSingle, DBLT> {
+public:
+  static constexpr const char *TRIGGER_TYPE_KEY{ "triggerType" };
+  static constexpr const char *TRIGGER_SETTINGS_KEY{ "triggerSettings" };
+  static constexpr const char *TRIGGER_THRESHOLD_KEY{ "triggerThreshold" };
+  static constexpr const char *PRETRIG_KEY{ "preTrig" };
+  static constexpr const char *POSTTRIG_KEY{ "postTrig" };
+  static constexpr const char *SAMPLING_FREQUENCY_KEY{ "samplingFrequency" };
+  // optional (default to true)
+  static constexpr const char *ENABLE_IRQ_KEY{ "enableIRQ" };
+  static constexpr const char *AUTO_RESTART_ACQ_KEY{ "autoRestartAcq" };
+  // optional (default to all)
+  static constexpr const char *TRIGGER_CHANNEL_SOURCE_KEY{
+    "triggerChannelSource"
+  };
+  static constexpr const char *CHANNEL_MASK_KEY{ "channelMask" };
+  // optional (defaults to single)
+  static constexpr const char *CHANNEL_MULTIPLEXING_KEY{
+    "channelMultiplexing"
+  };
 
-                            board(  const std::string& identifier,
-                                    const ptree& settings,
-                                    std::shared_ptr<master_type>& master,
-                                    const std::string& calibration_path);
+  // calibration file names
+  static constexpr const char *FNAME_PEDESTAL{ "pedestal.dat" };
+  static constexpr const char *FNAME_VERNIER{ "vernier.dat" };
 
-                            ~board();
+  using base_type = slave<Master, A, DSingle, DBLT>;
+  using master_type = Master;
+  using instructions = caen_v1729_impl::instructions<A>;
+  using buffer_type = buffer<board>;
+  using calibration_type = calibration<board>;
+  using single_data_type = typename base_type::single_data_type;
+  using blt_data_type = typename base_type::blt_data_type;
+  using address_type = typename base_type::address_type;
+  using base_type::name;
+  using base_type::addressing;
+  using base_type::single_transfer;
+  using base_type::blt_transfer;
 
-                            // read the measured pulse from memory
-                            // will automatically restart acquisition
-                            // if autoRestartAcq is set to true
-                            size_t read_pulse(buffer_type& buf);
+  board(const std::string &identifier, const ptree &settings,
+        std::shared_ptr<master_type> &master,
+        const std::string &calibration_path);
 
-                            // calibrate the verniers
-                            static void calibrate_verniers(
-                                    const std::string& identifier,
-                                    const ptree& settings,
-                                    std::shared_ptr<master_type>& master,
-                                    const std::string& calibration_path);
+  ~board();
 
-                            // do <n_acquisitions> random measurements to determine
-                            // the board pedestal values
-                            // note that the first <MEMORY_HEADER_SIZE> values are irrelevant, 
-                            // as they correspond to the memory header
-                            static void measure_pedestal(
-                                    const std::string& identifier,
-                                    const ptree& settings,
-                                    std::shared_ptr<master_type>& master,
-                                    const std::string& calibration_path,
-                                    size_t n_acquisitions=50);
+  // read the measured pulse from memory
+  // will automatically restart acquisition
+  // if autoRestartAcq is set to true
+  size_t read_pulse(buffer_type &buf);
 
-                        private:
-                            // static members so the calibration functions can also use
-                            // the general initialization routines
-                            static void init(const base_type& b);
-                            static void init_trigger(const base_type& b);
-                            static void init_mode_register(const base_type& b);
-                            static void init_digitizer(const base_type& b);
-                            static void init_window(const base_type& b);
-                            // end the session (called in the destructor)
-                            // issues a RESET instruction
-                            static void end(const base_type& b);
+  // calibrate the verniers
+  static void calibrate_verniers(const std::string &identifier,
+                                 const ptree &settings,
+                                 std::shared_ptr<master_type> &master,
+                                 const std::string &calibration_path);
 
-                            // load the calibrations
-                            void load_calibrations(
-                                    const std::string& calibration_path);
+  // do <n_acquisitions> random measurements to determine
+  // the board pedestal values
+  // note that the first <MEMORY_HEADER_SIZE> values are irrelevant,
+  // as they correspond to the memory header
+  static void measure_pedestal(const std::string &identifier,
+                               const ptree &settings,
+                               std::shared_ptr<master_type> &master,
+                               const std::string &calibration_path,
+                               size_t n_acquisitions = 50);
 
-                            std::shared_ptr<const calibration_type> calibration_; 
+private:
+  // static members so the calibration functions can also use
+  // the general initialization routines
+  static void init(const base_type &b);
+  static void init_trigger(const base_type &b);
+  static void init_mode_register(const base_type &b);
+  static void init_digitizer(const base_type &b);
+  static void init_window(const base_type &b);
+  // end the session (called in the destructor)
+  // issues a RESET instruction
+  static void end(const base_type &b);
 
-                            // to allow more simple syntax in the static member functions
-                            // using a bare slave<> object
-                            friend base_type;
-                    };
-        }
-        // actual V1729a and V1729 aliases
-        template <class Master, 
-                    addressing_mode A, 
-                    transfer_mode DSingle = transfer_mode::D32,
-                    transfer_mode DBLT = transfer_mode::MBLT>
-            using caen_v1729a = caen_v1729_impl::board<
-                                    Master, 
-                                    caen_v1729_impl::submodel::V1729A,
-                                    A, DSingle, DBLT>;
-        template <class Master, 
-                    addressing_mode A, 
-                    transfer_mode DSingle = transfer_mode::D32,
-                    transfer_mode DBLT = transfer_mode::MBLT>
-            using caen_v1729 = caen_v1729_impl::board<
-                                    Master, 
-                                    caen_v1729_impl::submodel::V1729,
-                                    A, DSingle, DBLT>;
-    }
+  // load the calibrations
+  void load_calibrations(const std::string &calibration_path);
+
+  std::shared_ptr<const calibration_type> calibration_;
+
+  // to allow more simple syntax in the static member functions
+  // using a bare slave<> object
+  friend base_type;
+};
+}
+// actual V1729a and V1729 aliases
+template <class Master, addressing_mode A,
+          transfer_mode DSingle = transfer_mode::D32,
+          transfer_mode DBLT = transfer_mode::MBLT>
+using caen_v1729a = caen_v1729_impl::board<
+    Master, caen_v1729_impl::submodel::V1729A, A, DSingle, DBLT>;
+template <class Master, addressing_mode A,
+          transfer_mode DSingle = transfer_mode::D32,
+          transfer_mode DBLT = transfer_mode::MBLT>
+using caen_v1729 = caen_v1729_impl::board<
+    Master, caen_v1729_impl::submodel::V1729, A, DSingle, DBLT>;
+}
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // definition: channel_view
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
+namespace vme {
+namespace caen_v1729_impl {
 
-            // STL-vector-like interface to a single-channel
-            // view in a V1729 buffer
-            template <class Buffer>
-                class channel_view {
-                    public:
-                        using buffer_type = Buffer;
-                        using board_type = typename buffer_type::board_type;
-                        using value_type = typename board_type::value_type;
-                        using iterator = channel_view_iterator<channel_view>;
+// STL-vector-like interface to a single-channel
+// view in a V1729 buffer
+template <class Buffer> class channel_view {
+public:
+  using buffer_type = Buffer;
+  using board_type = typename buffer_type::board_type;
+  using value_type = typename board_type::value_type;
+  using iterator = channel_view_iterator<channel_view>;
 
-                        constexpr channel_view(
-                                const size_t channel, 
-                                const buffer_type& buffer);
+  constexpr channel_view(const size_t channel, const buffer_type &buffer);
 
-                        value_type operator[](const size_t idx) const;
-                        value_type at(const size_t idx) const;
-                        constexpr size_t size() const;
-                        iterator begin() const;
-                        iterator end() const;
-                        size_t channel_number() const;
+  value_type operator[](const size_t idx) const;
+  value_type at(const size_t idx) const;
+  constexpr size_t size() const;
+  iterator begin() const;
+  iterator end() const;
+  size_t channel_number() const;
 
-                    private:
-                        const size_t channel_;
-                        const buffer_type& buffer_;
-                };
-
-        }
-    }
+private:
+  const size_t channel_;
+  const buffer_type &buffer_;
+};
+}
+}
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // definition: channel_view_iterator
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
-            template <class View>
-                class channel_view_iterator
-                    : public std::iterator<std::random_access_iterator_tag,
-                                           typename View::value_type>
-                    , public comparison_mixin<channel_view_iterator<View>>
-                    , public add_subtract_mixin<channel_view_iterator<View>>
-                    , public postfix_mixin<channel_view_iterator<View>> {
-                        public:
-                            using view_type = View;
-                            using base_type = std::iterator<
-                                std::random_access_iterator_tag,
-                                typename View::value_type>;
-                            using value_type = typename base_type::value_type;
-                            using difference_type = typename base_type::difference_type;
+namespace vme {
+namespace caen_v1729_impl {
+template <class View>
+class channel_view_iterator
+    : public std::iterator<std::random_access_iterator_tag,
+                           typename View::value_type>,
+      public comparison_mixin<channel_view_iterator<View> >,
+      public add_subtract_mixin<channel_view_iterator<View> >,
+      public postfix_mixin<channel_view_iterator<View> > {
+public:
+  using view_type = View;
+  using base_type =
+      std::iterator<std::random_access_iterator_tag, typename View::value_type>;
+  using value_type = typename base_type::value_type;
+  using difference_type = typename base_type::difference_type;
 
-                            // constructors
-                            constexpr channel_view_iterator();
-                            constexpr channel_view_iterator(const view_type& view);
-                            
-                            // dereference operator
-                            value_type operator*() const;
-                            // operator-> doesn't make sense, as lvalues
-                            // aren't available due to masking
+  // constructors
+  constexpr channel_view_iterator();
+  constexpr channel_view_iterator(const view_type &view);
 
-                            // comparison operators (expanded in comparison_mixin)
-                            bool operator==(const channel_view_iterator& rhs) const;
-                            bool operator<(const channel_view_iterator& rhs) const;
-                            
-                            // arithmetic operators, expanded in add_subtract_mixin
-                            channel_view_iterator& operator+=(difference_type n);
+  // dereference operator
+  value_type operator*() const;
+  // operator-> doesn't make sense, as lvalues
+  // aren't available due to masking
 
-                            // support for difference between two iterators
-                            difference_type operator- (
-                                    const channel_view_iterator& it) const;
-                            
-                            // offset dereference operator (C++11)
-                            value_type operator[] (size_t i) const;
-                            // swap() and N + <iterator> not implemented
-                            
-                        private:
-                            void set_end();
+  // comparison operators (expanded in comparison_mixin)
+  bool operator==(const channel_view_iterator &rhs) const;
+  bool operator<(const channel_view_iterator &rhs) const;
 
-                            const view_type* view_;
-                            size_t idx_;
-                            size_t end_idx_;
+  // arithmetic operators, expanded in add_subtract_mixin
+  channel_view_iterator &operator+=(difference_type n);
 
-                            friend view_type;
-                    };
-        }
-    }
+  // support for difference between two iterators
+  difference_type operator-(const channel_view_iterator &it) const;
+
+  // offset dereference operator (C++11)
+  value_type operator[](size_t i) const;
+  // swap() and N + <iterator> not implemented
+
+private:
+  void set_end();
+
+  const view_type *view_;
+  size_t idx_;
+  size_t end_idx_;
+
+  friend view_type;
+};
+}
+}
 }
 
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // implementation: V1729
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
+namespace vme {
+namespace caen_v1729_impl {
 
-            template <class Master, submodel M, 
-                      addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                board<Master, M, A, DSingle, DBLT>::board(
-                        const std::string& identifier,
-                        const ptree& settings,
-                        std::shared_ptr<Master>& master,
-                        const std::string& calibration_path)
-                    : base_type{identifier, settings, master} {
-                        init(*this);
-                        load_calibrations(calibration_path);
-                        LOG_JUNK(identifier, "Start data acquisition mode.");
-                        this->write(instructions::START_ACQUISITION, 1);
-                    }
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                board<Master, M, A, DSingle, DBLT>::~board() {
-                    end(*this);
-                }
-
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                size_t board<Master, M, A, DSingle, DBLT>::read_pulse(
-                        board<Master, M, A, DSingle, DBLT>::buffer_type& buf) {
-                    size_t nread {
-                        this->read(instructions::RAM_DATA, buf.buffer_)
-                    };
-                    single_data_type trig_rec;
-                    // read the trig_rec and automatically restart
-                    // acquisition
-                    this->read(instructions::RAM_DATA, trig_rec);
-                    // trig_rec is read from the main memory bank, therefor ensure
-                    // only the right information is read (8 is the numbers of bits/byte)
-                    // TODO: factor this out into an utility function
-                    trig_rec >>= 8 * (sizeof(trig_rec)
-                                        - sizeof(typename memory_type::value_type));
-                    trig_rec &= extra_properties<M>::MEMORY_MASK;
-                    buf.calibrate(calibration_, 
-                                    trig_rec);
-                    return nread;
-                }
-
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::calibrate_verniers(
-                        const std::string& identifier,
-                        const ptree& settings,
-                        std::shared_ptr<Master>& master,
-                        const std::string& calibration_path) {
-                    LOG_INFO(identifier, "Calibrating the verniers");
-                    // initialize the arrays
-                    vernier_type min, max;
-                    std::fill(min.begin(), min.end(), 
-                            std::numeric_limits<typename vernier_type::value_type>::max());
-                    std::fill(max.begin(), max.end(), 
-                            std::numeric_limits<typename vernier_type::value_type>::min());
-                    // board handle
-                    base_type b {identifier, settings, master};
-                    init(b);
-                    // random trigger for all channels
-                    b.write(instructions::TRIGGER_TYPE, 
-                            trigger_type::SOFTWARE | trigger_settings::RANDOM);
-                    b.write(instructions::CHANNEL_MASK, channel::CALL);
-                    // read zero columns from memory for fast calibration
-                    b.write(instructions::NB_OF_COLS_TO_READ, 0);
-                    // (heap) array to store the vernier data
-                    using vernier_memory_type = 
-                        std::array<memory_type::value_type, VERNIER_MEMORY_SIZE>;
-                    std::unique_ptr<vernier_memory_type> vbuf {new vernier_memory_type};
-                    // acquisition loop
-                    LOG_JUNK(identifier, "acquisition start");
-                    b.write(instructions::START_ACQUISITION, 1);
-                    // use non-standard timeout because it takes a few seconds
-                    // the entire 128kB of memory
-                    master->wait_for_irq(50000);
-                    LOG_JUNK(identifier, "reading verniers from memory");
-                    size_t nread {b.read(instructions::RAM_DATA, *vbuf)};
-                    tassert(nread == VERNIER_MEMORY_SIZE,
-                            "Problem reading the vernier calibration data");
-                    // process the data
-                    for (size_t i {0}; i < vbuf->size(); ++i) {
-                        size_t channel {N_CHANNELS - (i % N_CHANNELS) - 1};
-                        if ((*vbuf)[i] < min[channel]) {
-                            min[channel] = (*vbuf)[i];
-                        }
-                        if ((*vbuf)[i] > max[channel]) {
-                            max[channel] = (*vbuf)[i];
-                        }
-                    }
-
-                    end(b);
-
-                    LOG_JUNK(identifier, "Writing vernier calibration");
-                    // TODO fix
-                    write_array<typename vernier_type::value_type, 4>(
-                        make_filename(calibration_path, identifier, FNAME_VERNIER),
-                        {min, max},
-                        N_CHANNELS);
-                }
-
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::measure_pedestal(
-                        const std::string& identifier,
-                        const ptree& settings,
-                        std::shared_ptr<Master>& master,
-                        const std::string& calibration_path,
-                        size_t n_acquisitions) {
-                    LOG_INFO(identifier, "Measuring the board pedestal.");
-                    // init the arrays
-                    memory_type ped {0};
-                    std::array<double, MEMORY_SIZE + MEMORY_HEADER_SIZE> sum {0.};
-                    // temporary board handle
-                    base_type b {identifier, settings, master};
-                    init(b);
-                    // random trigger for all channels and cells
-                    b.write(instructions::TRIGGER_TYPE, 
-                            trigger_type::SOFTWARE | trigger_settings::RANDOM);
-                    b.write(instructions::CHANNEL_MASK, channel::CALL);
-                    b.write(instructions::NB_OF_COLS_TO_READ, N_CELLS);
-                    // do <n_acquisitions> acquisitions
-                    LOG_JUNK(identifier, "Acquisition start, running...");
-                    for (unsigned i {0}; i < n_acquisitions; ++i) {
-                        b.write(instructions::START_ACQUISITION, 1);
-                        master->wait_for_irq();
-                        size_t nread {
-                            b.read(instructions::RAM_DATA, ped)
-                        };
-                        tassert(nread == MEMORY_SIZE,
-                                "Problem measuring the pedestal.");
-                        std::transform(
-                                sum.begin(), sum.end(), 
-                                ped.begin(), 
-                                sum.begin(), 
-                                [=](double a, memory_type::value_type b) {
-                                    return a 
-                                        + static_cast<double>(b & extra_properties<M>::MEMORY_MASK) 
-                                            / n_acquisitions;
-                                }
-                        );
-                    }
-                    // copy the values back to ped, reordering to get a
-                    // channel 0 ==> channel 3 layout
-                    for (size_t i {0}; i < sum.size() / N_CHANNELS; ++i) {
-                        for (size_t j {0}; j < N_CHANNELS; ++j) {
-                            size_t i_lhs {N_CHANNELS * i + j};
-                            size_t i_rhs {N_CHANNELS * i + channel_index<A>::calc(j)};
-                            ped[i_lhs] = round(sum[i_rhs]);
-                        }
-                    }
-
-                    end(b);
-
-                    LOG_JUNK(identifier, "Writing pedestal information");
-                    write_array(
-                        make_filename(calibration_path, identifier, FNAME_PEDESTAL),
-                        ped,
-                        N_CHANNELS);
-                }
-
-            // the init functions are implemented as static member functions to play
-            // nice with the calibration methods. This however complicates things
-            // because they don't have access to a this pointer. The board access is
-            // circumvented by creating a raw temporary VME slave object, and using this
-            // directly. This has the unfortunate side effect of a somewhat cumbersome
-            // syntax (see all the "template" keywords specifiers for member functions)
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::init(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Reset board status");
-                    b.write(instructions::RESET, 0x1);
-                    init_trigger(b);
-                    init_mode_register(b);
-                    init_digitizer(b);
-                    init_window(b);
-                    LOG_JUNK(b.name(), "board initialized")
-                }
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::init_trigger(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Initializing trigger");
-                    // enable the trigger rate monitor
-                    b.write(instructions::RATE_REG, 0x1);
-
-                    // set the trigger type
-                    trigger_type type {
-                        b.conf().template get<trigger_type>(TRIGGER_TYPE_KEY, TRIGGER_TYPE_TRANSLATOR)
-                    };
-                    single_data_type bitpattern {
-                        b.conf().get_bitpattern(
-                                TRIGGER_SETTINGS_KEY,
-                                TRIGGER_SETTINGS_TRANSLATOR)
-                    };
-                    bitpattern |= type;
-                    b.write(instructions::TRIGGER_TYPE, bitpattern);
-
-                    // set the channel source in case of "internal" and "or" trigger
-                    if (type == trigger_type::INTERNAL
-                            || type == trigger_type::OR) {
-                        auto channel_pattern =
-                            b.conf().get_optional_bitpattern(
-                                    TRIGGER_CHANNEL_SOURCE_KEY,
-                                    CHANNEL_TRANSLATOR);
-                        if (!channel_pattern) {
-                            channel_pattern.reset(channel::CALL);
-                        };
-                        b.write(instructions::TRIGGER_CHANNEL_SOURCE, 
-                                *channel_pattern);
-                    }
-
-                    // set the trigger threshold as long as 
-                    //   * the trigger is not external
-                    //   _AND_
-                    //   * trigger_setting::DIRECT_EXTERNAL isn't set
-                    if (!(type == trigger_type::EXTERNAL
-                                && (bitpattern & trigger_settings::DIRECT_EXTERNAL))) {
-                        float f_threshold {
-                            b.conf().template get<float>(TRIGGER_THRESHOLD_KEY)
-                        };
-                        if (fabs(f_threshold) > MAX_ABS_TRIGGER_THRESHOLD) {
-                            throw b.conf().value_error(
-                                    TRIGGER_THRESHOLD_KEY,
-                                    std::to_string(f_threshold));
-                        }
-                        // convert floating point value to a 12-bit integer
-                        // (-1V --> 1V becomes 0x000 --> 0xFFF)
-                        single_data_type i_threshold {
-                            static_cast<single_data_type>(
-                                    (f_threshold + MAX_ABS_TRIGGER_THRESHOLD)
-                                        /(2.*MAX_ABS_TRIGGER_THRESHOLD) * 0xFFF)
-                        };
-                        b.write(instructions::TRIGGER_THRESHOLD_DAC, i_threshold);
-                        b.write(instructions::LOAD_TRIGGER_THRESHOLD_DAC, 0x1);
-                    }
-                }
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::init_mode_register(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Initializing mode register");
-                    // bit 1: 12/14bit mode
-                    single_data_type mode_register = extra_properties<M>::BIT_MODE;
-                    // bit 0: enable/disable VME IRQ from this board
-                    //        defaults to 0x1
-                    auto irq = 
-                        b.conf().get_optional(
-                                ENABLE_IRQ_KEY, 
-                                BINARY_TRANSLATOR);
-                    if (irq) {
-                        mode_register |= *irq;
-                    } else {
-                        mode_register |= 0x1;
-                    }
-
-                    // bit 2: enable auto restart acquisition on read
-                    //        of TRIG_REC, defaults to 1 (0x4)
-                    auto restart = 
-                        (b.conf().get_optional(
-                                AUTO_RESTART_ACQ_KEY,
-                                BINARY_TRANSLATOR));
-                    if (restart) {
-                        mode_register |= *restart << 2;
-                    } else {
-                        mode_register |= 0x1 << 2;
-                    }
-                    b.write(instructions::MODE_REGISTER, mode_register);
-                }
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::init_digitizer(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Initializing digitizer");
-                    // sampling frequency
-                    single_data_type new_clock {
-                        b.conf().get(
-                                SAMPLING_FREQUENCY_KEY,
-                                SAMPLING_FREQUENCY_TRANSLATOR)
-                    };
-                    // check if we need to change it at all. Important, because a change,
-                    // even to the same value, requires new pedestals. 
-                    // The change should therefor effectively be issued during the pedestal
-                    // measurement.
-                    single_data_type old_clock {0};
-                    b.read(instructions::FP_FREQUENCY, old_clock);
-                    if ((old_clock & 0x3F) != new_clock) {
-                        LOG_WARNING(b.name(), "CHANGING PILOT FREQUENCY");
-                        b.write(instructions::FP_FREQUENCY, new_clock);
-                    }
-                    // number of cols to read (all)
-                    b.write(instructions::NB_OF_COLS_TO_READ,
-                            N_CELLS);
-                    // channels to read (default to all)
-                    auto channel_pattern = 
-                        b.conf().get_optional_bitpattern(
-                                CHANNEL_MASK_KEY,
-                                CHANNEL_TRANSLATOR);
-                    if (!channel_pattern) {
-                        channel_pattern.reset(channel::CALL);
-                    }
-                    b.write(instructions::CHANNEL_MASK, 
-                            *channel_pattern);
-                    // number of channels for multiplexing 
-                    // (1 channel per channel)
-                    auto n_channels =
-                        b.conf().get_optional(
-                                CHANNEL_MULTIPLEXING_KEY,
-                                CHANNEL_MULTIPLEXING_TRANSLATOR);
-                    if (!n_channels) {
-                        n_channels.reset(channel_multiplexing::C_SINGLE);
-                    }
-                    b.write(instructions::NUMBER_OF_CHANNELS,
-                            *n_channels);
-                }
-                // initialize the pre- and post-trig windows
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::init_window(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Initializing acquisition window");
-                    // pretrig
-                    uint16_t pretrig {b.conf().template get<uint16_t>(PRETRIG_KEY)};
-                    // sampling frequency for value checking
-                    single_data_type fsample {
-                        b.conf().get(
-                                SAMPLING_FREQUENCY_KEY,
-                                SAMPLING_FREQUENCY_TRANSLATOR)
-                    };
-                    if ((fsample == sampling_frequency::FS_2GHZ
-                            && pretrig < MIN_PRETRIG_2GHZ)
-                        || (fsample == sampling_frequency::FS_1GHZ
-                            && pretrig < MIN_PRETRIG_1GHZ)) {
-                        throw b.conf().value_error(
-                                PRETRIG_KEY, 
-                                std::to_string(pretrig));
-                    }
-                    // postrig values
-                    uint16_t posttrig {b.conf().template get<uint16_t>(POSTTRIG_KEY)};
-                    // validate posttrig
-                    if (posttrig < MIN_POSTTRIG) {
-                        throw b.conf().value_error(
-                                POSTTRIG_KEY, 
-                                std::to_string(posttrig));
-                    }
-                    // write to registers
-                    b.write(instructions::PRETRIG.LSB, pretrig & 0xFF);
-                    b.write(instructions::PRETRIG.MSB, (pretrig >> 8) & 0xFF);
-                    b.write(instructions::POSTTRIG.LSB, posttrig & 0xFF);
-                    b.write(instructions::POSTTRIG.MSB, (posttrig >> 8) & 0xFF);
-                }
-            // end our session (reset the board)
-            template <class Master, submodel M, 
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::end(
-                        const board<Master, M, A, DSingle, DBLT>::base_type& b) {
-                    LOG_JUNK(b.name(), "Resetting board status");
-                    b.write(instructions::RESET, 0x1);
-                }
-
-            // load calibrations
-            template <class Master, submodel M,
-                        addressing_mode A, transfer_mode DSingle, transfer_mode DBLT>
-                void board<Master, M, A, DSingle, DBLT>::load_calibrations(
-                        const std::string& calibration_path) {
-                    LOG_INFO(name(), 
-                            "Loading calibrations from '" + calibration_path + "'");
-
-                    memory_type ped {0};
-                    read_array(
-                        make_filename(calibration_path, name(), FNAME_PEDESTAL),
-                        ped
-                    );
-
-                    vernier_type min {0};
-                    vernier_type max {0};
-                    read_array<typename vernier_type::value_type, 4>(
-                        make_filename(calibration_path, name(), FNAME_VERNIER),
-                        {&min, &max}
-                    );
-                    
-                    calibration_.reset(
-                        new calibration_type {
-                            ped, 
-                            min, 
-                            max, 
-                            this->conf_.template get<uint16_t>(POSTTRIG_KEY)
-                        }
-                    );
-                }
-        }
-    }
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+board<Master, M, A, DSingle, DBLT>::board(const std::string &identifier,
+                                          const ptree &settings,
+                                          std::shared_ptr<Master> &master,
+                                          const std::string &calibration_path)
+    : base_type{ identifier, settings, master } {
+  init(*this);
+  load_calibrations(calibration_path);
+  LOG_JUNK(identifier, "Start data acquisition mode.");
+  this->write(instructions::START_ACQUISITION, 1);
+}
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+board<Master, M, A, DSingle, DBLT>::~board() {
+  end(*this);
 }
 
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+size_t board<Master, M, A, DSingle, DBLT>::read_pulse(
+    board<Master, M, A, DSingle, DBLT>::buffer_type &buf) {
+  size_t nread{ this->read(instructions::RAM_DATA, buf.buffer_) };
+  single_data_type trig_rec;
+  // read the trig_rec and automatically restart
+  // acquisition
+  this->read(instructions::RAM_DATA, trig_rec);
+  // trig_rec is read from the main memory bank, therefor ensure
+  // only the right information is read (8 is the numbers of bits/byte)
+  // TODO: factor this out into an utility function
+  trig_rec >>=
+      8 * (sizeof(trig_rec) - sizeof(typename memory_type::value_type));
+  trig_rec &= extra_properties<M>::MEMORY_MASK;
+  buf.calibrate(calibration_, trig_rec);
+  return nread;
+}
 
-//////////////////////////////////////////////////////////////////////////////////////////
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::calibrate_verniers(
+    const std::string &identifier, const ptree &settings,
+    std::shared_ptr<Master> &master, const std::string &calibration_path) {
+  LOG_INFO(identifier, "Calibrating the verniers");
+  // initialize the arrays
+  vernier_type min, max;
+  std::fill(min.begin(), min.end(),
+            std::numeric_limits<typename vernier_type::value_type>::max());
+  std::fill(max.begin(), max.end(),
+            std::numeric_limits<typename vernier_type::value_type>::min());
+  // board handle
+  base_type b{ identifier, settings, master };
+  init(b);
+  // random trigger for all channels
+  b.write(instructions::TRIGGER_TYPE,
+          trigger_type::SOFTWARE | trigger_settings::RANDOM);
+  b.write(instructions::CHANNEL_MASK, channel::CALL);
+  // read zero columns from memory for fast calibration
+  b.write(instructions::NB_OF_COLS_TO_READ, 0);
+  // (heap) array to store the vernier data
+  using vernier_memory_type =
+      std::array<memory_type::value_type, VERNIER_MEMORY_SIZE>;
+  std::unique_ptr<vernier_memory_type> vbuf{ new vernier_memory_type };
+  // acquisition loop
+  LOG_JUNK(identifier, "acquisition start");
+  b.write(instructions::START_ACQUISITION, 1);
+  // use non-standard timeout because it takes a few seconds
+  // the entire 128kB of memory
+  master->wait_for_irq(50000);
+  LOG_JUNK(identifier, "reading verniers from memory");
+  size_t nread{ b.read(instructions::RAM_DATA, *vbuf) };
+  tassert(nread == VERNIER_MEMORY_SIZE,
+          "Problem reading the vernier calibration data");
+  // process the data
+  for (size_t i{ 0 }; i < vbuf->size(); ++i) {
+    size_t channel{ N_CHANNELS - (i % N_CHANNELS) - 1 };
+    if ((*vbuf)[i] < min[channel]) {
+      min[channel] = (*vbuf)[i];
+    }
+    if ((*vbuf)[i] > max[channel]) {
+      max[channel] = (*vbuf)[i];
+    }
+  }
+
+  end(b);
+
+  LOG_JUNK(identifier, "Writing vernier calibration");
+  // TODO fix
+  write_array<typename vernier_type::value_type, 4>(
+      make_filename(calibration_path, identifier, FNAME_VERNIER), { min, max },
+      N_CHANNELS);
+}
+
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::measure_pedestal(
+    const std::string &identifier, const ptree &settings,
+    std::shared_ptr<Master> &master, const std::string &calibration_path,
+    size_t n_acquisitions) {
+  LOG_INFO(identifier, "Measuring the board pedestal.");
+  // init the arrays
+  memory_type ped{ 0 };
+  std::array<double, MEMORY_SIZE + MEMORY_HEADER_SIZE> sum{ 0. };
+  // temporary board handle
+  base_type b{ identifier, settings, master };
+  init(b);
+  // random trigger for all channels and cells
+  b.write(instructions::TRIGGER_TYPE,
+          trigger_type::SOFTWARE | trigger_settings::RANDOM);
+  b.write(instructions::CHANNEL_MASK, channel::CALL);
+  b.write(instructions::NB_OF_COLS_TO_READ, N_CELLS);
+  // do <n_acquisitions> acquisitions
+  LOG_JUNK(identifier, "Acquisition start, running...");
+  for (unsigned i{ 0 }; i < n_acquisitions; ++i) {
+    b.write(instructions::START_ACQUISITION, 1);
+    master->wait_for_irq();
+    size_t nread{ b.read(instructions::RAM_DATA, ped) };
+    tassert(nread == MEMORY_SIZE, "Problem measuring the pedestal.");
+    std::transform(sum.begin(), sum.end(), ped.begin(), sum.begin(),
+                   [=](double a, memory_type::value_type b) {
+      return a + static_cast<double>(b & extra_properties<M>::MEMORY_MASK) /
+                     n_acquisitions;
+    });
+  }
+  // copy the values back to ped, reordering to get a
+  // channel 0 ==> channel 3 layout
+  for (size_t i{ 0 }; i < sum.size() / N_CHANNELS; ++i) {
+    for (size_t j{ 0 }; j < N_CHANNELS; ++j) {
+      size_t i_lhs{ N_CHANNELS *i + j };
+      size_t i_rhs{ N_CHANNELS *i + channel_index<A>::calc(j) };
+      ped[i_lhs] = round(sum[i_rhs]);
+    }
+  }
+
+  end(b);
+
+  LOG_JUNK(identifier, "Writing pedestal information");
+  write_array(make_filename(calibration_path, identifier, FNAME_PEDESTAL), ped,
+              N_CHANNELS);
+}
+
+// the init functions are implemented as static member functions to play
+// nice with the calibration methods. This however complicates things
+// because they don't have access to a this pointer. The board access is
+// circumvented by creating a raw temporary VME slave object, and using this
+// directly. This has the unfortunate side effect of a somewhat cumbersome
+// syntax (see all the "template" keywords specifiers for member functions)
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::init(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Reset board status");
+  b.write(instructions::RESET, 0x1);
+  init_trigger(b);
+  init_mode_register(b);
+  init_digitizer(b);
+  init_window(b);
+  LOG_JUNK(b.name(), "board initialized")
+}
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::init_trigger(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Initializing trigger");
+  // enable the trigger rate monitor
+  b.write(instructions::RATE_REG, 0x1);
+
+  // set the trigger type
+  trigger_type type{ b.conf().template get<trigger_type>(
+      TRIGGER_TYPE_KEY, TRIGGER_TYPE_TRANSLATOR) };
+  single_data_type bitpattern{ b.conf().get_bitpattern(
+      TRIGGER_SETTINGS_KEY, TRIGGER_SETTINGS_TRANSLATOR) };
+  bitpattern |= type;
+  b.write(instructions::TRIGGER_TYPE, bitpattern);
+
+  // set the channel source in case of "internal" and "or" trigger
+  if (type == trigger_type::INTERNAL || type == trigger_type::OR) {
+    auto channel_pattern = b.conf().get_optional_bitpattern(
+        TRIGGER_CHANNEL_SOURCE_KEY, CHANNEL_TRANSLATOR);
+    if (!channel_pattern) {
+      channel_pattern.reset(channel::CALL);
+    };
+    b.write(instructions::TRIGGER_CHANNEL_SOURCE, *channel_pattern);
+  }
+
+  // set the trigger threshold as long as
+  //   * the trigger is not external
+  //   _AND_
+  //   * trigger_setting::DIRECT_EXTERNAL isn't set
+  if (!(type == trigger_type::EXTERNAL &&
+        (bitpattern & trigger_settings::DIRECT_EXTERNAL))) {
+    float f_threshold{ b.conf().template get<float>(TRIGGER_THRESHOLD_KEY) };
+    if (fabs(f_threshold) > MAX_ABS_TRIGGER_THRESHOLD) {
+      throw b.conf().value_error(TRIGGER_THRESHOLD_KEY,
+                                 std::to_string(f_threshold));
+    }
+    // convert floating point value to a 12-bit integer
+    // (-1V --> 1V becomes 0x000 --> 0xFFF)
+    single_data_type i_threshold{ static_cast<single_data_type>(
+        (f_threshold + MAX_ABS_TRIGGER_THRESHOLD) /
+        (2. * MAX_ABS_TRIGGER_THRESHOLD) * 0xFFF) };
+    b.write(instructions::TRIGGER_THRESHOLD_DAC, i_threshold);
+    b.write(instructions::LOAD_TRIGGER_THRESHOLD_DAC, 0x1);
+  }
+}
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::init_mode_register(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Initializing mode register");
+  // bit 1: 12/14bit mode
+  single_data_type mode_register = extra_properties<M>::BIT_MODE;
+  // bit 0: enable/disable VME IRQ from this board
+  //        defaults to 0x1
+  auto irq = b.conf().get_optional(ENABLE_IRQ_KEY, BINARY_TRANSLATOR);
+  if (irq) {
+    mode_register |= *irq;
+  } else {
+    mode_register |= 0x1;
+  }
+
+  // bit 2: enable auto restart acquisition on read
+  //        of TRIG_REC, defaults to 1 (0x4)
+  auto restart =
+      (b.conf().get_optional(AUTO_RESTART_ACQ_KEY, BINARY_TRANSLATOR));
+  if (restart) {
+    mode_register |= *restart << 2;
+  } else {
+    mode_register |= 0x1 << 2;
+  }
+  b.write(instructions::MODE_REGISTER, mode_register);
+}
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::init_digitizer(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Initializing digitizer");
+  // sampling frequency
+  single_data_type new_clock{ b.conf().get(SAMPLING_FREQUENCY_KEY,
+                                           SAMPLING_FREQUENCY_TRANSLATOR) };
+  // check if we need to change it at all. Important, because a change,
+  // even to the same value, requires new pedestals.
+  // The change should therefor effectively be issued during the pedestal
+  // measurement.
+  single_data_type old_clock{ 0 };
+  b.read(instructions::FP_FREQUENCY, old_clock);
+  if ((old_clock & 0x3F) != new_clock) {
+    LOG_WARNING(b.name(), "CHANGING PILOT FREQUENCY");
+    b.write(instructions::FP_FREQUENCY, new_clock);
+  }
+  // number of cols to read (all)
+  b.write(instructions::NB_OF_COLS_TO_READ, N_CELLS);
+  // channels to read (default to all)
+  auto channel_pattern =
+      b.conf().get_optional_bitpattern(CHANNEL_MASK_KEY, CHANNEL_TRANSLATOR);
+  if (!channel_pattern) {
+    channel_pattern.reset(channel::CALL);
+  }
+  b.write(instructions::CHANNEL_MASK, *channel_pattern);
+  // number of channels for multiplexing
+  // (1 channel per channel)
+  auto n_channels = b.conf().get_optional(CHANNEL_MULTIPLEXING_KEY,
+                                          CHANNEL_MULTIPLEXING_TRANSLATOR);
+  if (!n_channels) {
+    n_channels.reset(channel_multiplexing::C_SINGLE);
+  }
+  b.write(instructions::NUMBER_OF_CHANNELS, *n_channels);
+}
+// initialize the pre- and post-trig windows
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::init_window(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Initializing acquisition window");
+  // pretrig
+  uint16_t pretrig{ b.conf().template get<uint16_t>(PRETRIG_KEY) };
+  // sampling frequency for value checking
+  single_data_type fsample{ b.conf().get(SAMPLING_FREQUENCY_KEY,
+                                         SAMPLING_FREQUENCY_TRANSLATOR) };
+  if ((fsample == sampling_frequency::FS_2GHZ && pretrig < MIN_PRETRIG_2GHZ) ||
+      (fsample == sampling_frequency::FS_1GHZ && pretrig < MIN_PRETRIG_1GHZ)) {
+    throw b.conf().value_error(PRETRIG_KEY, std::to_string(pretrig));
+  }
+  // postrig values
+  uint16_t posttrig{ b.conf().template get<uint16_t>(POSTTRIG_KEY) };
+  // validate posttrig
+  if (posttrig < MIN_POSTTRIG) {
+    throw b.conf().value_error(POSTTRIG_KEY, std::to_string(posttrig));
+  }
+  // write to registers
+  b.write(instructions::PRETRIG.LSB, pretrig & 0xFF);
+  b.write(instructions::PRETRIG.MSB, (pretrig >> 8) & 0xFF);
+  b.write(instructions::POSTTRIG.LSB, posttrig & 0xFF);
+  b.write(instructions::POSTTRIG.MSB, (posttrig >> 8) & 0xFF);
+}
+// end our session (reset the board)
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::end(
+    const board<Master, M, A, DSingle, DBLT>::base_type &b) {
+  LOG_JUNK(b.name(), "Resetting board status");
+  b.write(instructions::RESET, 0x1);
+}
+
+// load calibrations
+template <class Master, submodel M, addressing_mode A, transfer_mode DSingle,
+          transfer_mode DBLT>
+void board<Master, M, A, DSingle, DBLT>::load_calibrations(
+    const std::string &calibration_path) {
+  LOG_INFO(name(), "Loading calibrations from '" + calibration_path + "'");
+
+  memory_type ped{ 0 };
+  read_array(make_filename(calibration_path, name(), FNAME_PEDESTAL), ped);
+
+  vernier_type min{ 0 };
+  vernier_type max{ 0 };
+  read_array<typename vernier_type::value_type, 4>(
+      make_filename(calibration_path, name(), FNAME_VERNIER), { &min, &max });
+
+  calibration_.reset(new calibration_type{
+    ped, min, max, this->conf_.template get<uint16_t>(POSTTRIG_KEY)
+  });
+}
+}
+}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // implementation: calibration
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
+namespace vme {
+namespace caen_v1729_impl {
 
-            template <class Board>
-                calibration<Board>::calibration(
-                        const memory_type& ped, 
-                        const vernier_type& min, 
-                        const vernier_type& max,
-                        const size_t post)
-                        : pedestal (ped)        // carefull using initializer lists
-                        , vernier_min (min)     // on arrays!!! (in a way they're similar
-                        , vernier_max (max)     // to POD structs without constructors)
-                        , posttrig {post} {}
-
-        }
-    }
+template <class Board>
+calibration<Board>::calibration(const memory_type &ped, const vernier_type &min,
+                                const vernier_type &max, const size_t post)
+    : pedestal(ped) // carefull using initializer lists
+      ,
+      vernier_min(min) // on arrays!!! (in a way they're similar
+      ,
+      vernier_max(max) // to POD structs without constructors)
+      ,
+      posttrig{ post } {}
+}
+}
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // implementation: buffer
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
+namespace vme {
+namespace caen_v1729_impl {
 
-            template <class Board>
-                auto buffer<Board>::get(
-                        const size_t chan, size_t idx) const
-                -> value_type {
-                    idx = fold_index(idx);
-                    // pedestals are nicely stored in order
-                    const value_type ped {
-                        calibration_->pedestal[idx + chan]
-                    };
-                    // buffer values are more complex (see spec.hpp or channel_index.hpp)
-                    const value_type val {
-                        mask(buffer_[idx 
-                            + channel_index<board_type::addressing>::calc(chan)])
-                    };
-                    return val - ped;
-                }
-
-            template <class Board>
-                auto buffer<Board>::integrate(
-                        const size_t chan, 
-                        const std::pair<size_t, size_t>& range) const
-                -> value_type {
-                    value_type sum {0};
-                    for (size_t i {range.first}; i < range.second; ++i) {
-                        sum += get(chan, i);
-                    }
-                    return sum;
-                }
-            template <class Board>
-                auto buffer<Board>::integrate(
-                        const size_t chan) const 
-                -> value_type {
-                    return integrate(chan, {0, size()});
-                }
-
-            template <class Board>
-                constexpr size_t buffer<Board>::size() const {
-                    return (board_type::MEMORY_DATA_SIZE 
-                                / board_type::N_CHANNELS)
-                           - board_type::MEMORY_DATA_SKIP;
-                }
-
-            template <class Board>
-                auto buffer<Board>::channel(
-                        const size_t chan) const 
-                -> view_type {
-                    return {chan, *this};
-                }
-
-            template <class Board>
-                auto buffer<Board>::mask(
-                        const buffer<Board>::value_type val) const 
-                -> value_type {
-                    return val & board_type::MEMORY_MASK;
-                }
-            template <class Board>
-                size_t buffer<Board>::fold_index(
-                        size_t idx) const {
-                    // idx of the first cell after the last cell
-                    idx += buffer_end_ + board_type::ROWS_PER_CELL;
-                    // first values in the buffer cannot be trusted
-                    idx += board_type::MEMORY_DATA_SKIP;
-                    // take into account channels
-                    idx *= board_type::N_CHANNELS;
-                    // fold the index
-                    idx %= board_type::MEMORY_DATA_SIZE;
-                    // data is further offset by the header
-                    idx += board_type::MEMORY_HEADER_SIZE;
-                    // that's all
-                    return idx;
-                }
-
-            template <class Board>
-                void buffer<Board>::calibrate(
-                        std::shared_ptr<const buffer<Board>::calibration_type>& cal,
-                        const size_t trig_rec) {
-                    tassert(cal, "null pointer error");
-                    calibration_ = cal;
-                    buffer_end_ = board_type::N_CELLS 
-                                        - (trig_rec - cal->posttrig);
-                    buffer_end_ *= board_type::ROWS_PER_CELL;
-                    buffer_end_ -= vernier();
-                }
-
-            template <class Board>
-                size_t buffer<Board>::vernier() {
-                    double v {0};
-                    for (unsigned i {0}; 
-                            i < board_type::N_CHANNELS; ++i) {
-                        // Vernier is stored as words 4-7 in the buffer
-                        v += static_cast<double>(buffer_[board_type::MEMORY_VERNIER_INDEX + i] 
-                                        - calibration_->vernier_min[i])
-                            / (calibration_->vernier_max[i] - 
-                                        calibration_->vernier_min[i]);
-                    };
-
-                    return static_cast<size_t>(
-                            board_type::ROWS_PER_CELL * v / board_type::N_CHANNELS);
-                }
-
-
-        }
-    }
+template <class Board>
+auto buffer<Board>::get(const size_t chan, size_t idx) const -> value_type {
+  idx = fold_index(idx);
+  // pedestals are nicely stored in order
+  const value_type ped{ calibration_->pedestal[idx + chan] };
+  // buffer values are more complex (see spec.hpp or channel_index.hpp)
+  const value_type val{ mask(
+      buffer_[idx + channel_index<board_type::addressing>::calc(chan)]) };
+  return val - ped;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+template <class Board>
+auto buffer<Board>::integrate(const size_t chan,
+                              const std::pair<size_t, size_t> &range)
+    const -> value_type {
+  value_type sum{ 0 };
+  for (size_t i{ range.first }; i < range.second; ++i) {
+    sum += get(chan, i);
+  }
+  return sum;
+}
+template <class Board>
+auto buffer<Board>::integrate(const size_t chan) const -> value_type {
+  return integrate(chan, { 0, size() });
+}
+
+template <class Board> constexpr size_t buffer<Board>::size() const {
+  return (board_type::MEMORY_DATA_SIZE / board_type::N_CHANNELS) -
+         board_type::MEMORY_DATA_SKIP;
+}
+
+template <class Board>
+auto buffer<Board>::channel(const size_t chan) const -> view_type {
+  return { chan, *this };
+}
+
+template <class Board>
+auto buffer<Board>::mask(const buffer<Board>::value_type val)
+    const -> value_type {
+  return val & board_type::MEMORY_MASK;
+}
+template <class Board> size_t buffer<Board>::fold_index(size_t idx) const {
+  // idx of the first cell after the last cell
+  idx += buffer_end_ + board_type::ROWS_PER_CELL;
+  // first values in the buffer cannot be trusted
+  idx += board_type::MEMORY_DATA_SKIP;
+  // take into account channels
+  idx *= board_type::N_CHANNELS;
+  // fold the index
+  idx %= board_type::MEMORY_DATA_SIZE;
+  // data is further offset by the header
+  idx += board_type::MEMORY_HEADER_SIZE;
+  // that's all
+  return idx;
+}
+
+template <class Board>
+void buffer<Board>::calibrate(
+    std::shared_ptr<const buffer<Board>::calibration_type> &cal,
+    const size_t trig_rec) {
+  tassert(cal, "null pointer error");
+  calibration_ = cal;
+  buffer_end_ = board_type::N_CELLS - (trig_rec - cal->posttrig);
+  buffer_end_ *= board_type::ROWS_PER_CELL;
+  buffer_end_ -= vernier();
+}
+
+template <class Board> size_t buffer<Board>::vernier() {
+  double v{ 0 };
+  for (unsigned i{ 0 }; i < board_type::N_CHANNELS; ++i) {
+    // Vernier is stored as words 4-7 in the buffer
+    v += static_cast<double>(buffer_[board_type::MEMORY_VERNIER_INDEX + i] -
+                             calibration_->vernier_min[i]) /
+         (calibration_->vernier_max[i] - calibration_->vernier_min[i]);
+  };
+
+  return static_cast<size_t>(board_type::ROWS_PER_CELL * v /
+                             board_type::N_CHANNELS);
+}
+}
+}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // implementation: channel_view
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
-            
-            template <class Board>
-                constexpr channel_view<Board>::channel_view(
-                        const size_t channel, 
-                        const channel_view<Board>::buffer_type& buffer)
-                    : channel_ {channel}
-                    , buffer_ {buffer} {}
+namespace vme {
+namespace caen_v1729_impl {
 
-            template <class Board>
-                auto channel_view<Board>::operator[](
-                        const size_t idx) const 
-                -> value_type {
-                    return buffer_.get(channel_, idx);
-                }
-            template <class Board>
-                auto channel_view<Board>::at(
-                        const size_t idx) const 
-                -> value_type {
-                    if (idx > size()) {
-                        throw exception("out_of_range", 
-                                        "Invalid index requested from channel_view");
-                    }
-                    return (*this)[idx];
-                }
-            template <class Board>
-                constexpr size_t channel_view<Board>::size() const {
-                    return buffer_.size();
-                }
-            template <class Board>
-                auto channel_view<Board>::begin() const 
-                -> iterator {
-                    return {*this};
-                }
-            template <class Board>
-                auto channel_view<Board>::end() const 
-                -> iterator {
-                    iterator it {*this};
-                    it.set_end();
-                    return it;
-                }
-            template <class Board>
-                size_t 
-                channel_view<Board>::channel_number() const {
-                    return channel_;
-                }
-        }
-    }
+template <class Board>
+constexpr channel_view<Board>::channel_view(
+    const size_t channel, const channel_view<Board>::buffer_type &buffer)
+    : channel_{ channel }, buffer_{ buffer } {}
+
+template <class Board>
+auto channel_view<Board>::operator[](const size_t idx) const -> value_type {
+  return buffer_.get(channel_, idx);
+}
+template <class Board>
+auto channel_view<Board>::at(const size_t idx) const -> value_type {
+  if (idx > size()) {
+    throw exception("out_of_range",
+                    "Invalid index requested from channel_view");
+  }
+  return (*this)[idx];
+}
+template <class Board> constexpr size_t channel_view<Board>::size() const {
+  return buffer_.size();
+}
+template <class Board> auto channel_view<Board>::begin() const -> iterator {
+  return { *this };
+}
+template <class Board> auto channel_view<Board>::end() const -> iterator {
+  iterator it{ *this };
+  it.set_end();
+  return it;
+}
+template <class Board> size_t channel_view<Board>::channel_number() const {
+  return channel_;
+}
+}
+}
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // implementation: channel_view_iterator
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 namespace ctrlroom {
-    namespace vme {
-        namespace caen_v1729_impl {
-            template <class View>
-                constexpr channel_view_iterator<View>::channel_view_iterator() 
-                    : view_ {nullptr}
-                    , idx_ {0}
-                    , end_idx_ {0} {}
+namespace vme {
+namespace caen_v1729_impl {
+template <class View>
+constexpr channel_view_iterator<View>::channel_view_iterator()
+    : view_{ nullptr }, idx_{ 0 }, end_idx_{ 0 } {}
 
-            template <class View>
-                constexpr channel_view_iterator<View>::channel_view_iterator(
-                        const view_type& view)
-                    : view_ {&view}
-                    , idx_ {0} 
-                    , end_idx_ {view.size()} {}
+template <class View>
+constexpr channel_view_iterator<View>::channel_view_iterator(
+    const view_type &view)
+    : view_{ &view }, idx_{ 0 }, end_idx_{ view.size() } {}
 
-            template <class View>
-                auto channel_view_iterator<View>::operator*() const 
-                -> value_type {
-                    return (*view_)[idx_];
-                }
-            template <class View>
-                bool channel_view_iterator<View>::operator==(
-                        const channel_view_iterator<View>& rhs) const {
-                    return (view_ == rhs.view_ && idx_ == rhs.idx_);
-                }
-            template <class View>
-                bool channel_view_iterator<View>::operator<(
-                        const channel_view_iterator<View>& rhs) const {
-                    return (view_ == rhs.view_ && idx_ < rhs.idx_);
-                }
-            template <class View>
-                auto channel_view_iterator<View>::operator+=(
-                        channel_view_iterator<View>::difference_type n) 
-                -> channel_view_iterator& {
-                    idx_ += n;
-                    return *this;
-                }
-            template <class View>
-                auto channel_view_iterator<View>::operator- (
-                        const channel_view_iterator<View>& b) const 
-                -> difference_type {
-                    return static_cast<difference_type>(idx_)
-                                - static_cast<difference_type>(b.idx_);
-                }
-            template <class View>
-                auto channel_view_iterator<View>::operator[] (size_t i) const 
-                -> value_type {
-                    return (*view_)[idx_ + i];
-                }
-            template <class View>
-                void channel_view_iterator<View>::set_end() {
-                    idx_ = end_idx_;
-                }
-        }
-    }
+template <class View>
+auto channel_view_iterator<View>::operator*() const -> value_type {
+  return (*view_)[idx_];
+}
+template <class View>
+bool channel_view_iterator<View>::
+operator==(const channel_view_iterator<View> &rhs) const {
+  return (view_ == rhs.view_ && idx_ == rhs.idx_);
+}
+template <class View>
+bool channel_view_iterator<View>::
+operator<(const channel_view_iterator<View> &rhs) const {
+  return (view_ == rhs.view_ && idx_ < rhs.idx_);
+}
+template <class View>
+auto channel_view_iterator<View>::
+operator+=(channel_view_iterator<View>::difference_type n)
+    -> channel_view_iterator &{
+  idx_ += n;
+  return *this;
+}
+template <class View>
+auto channel_view_iterator<View>::
+operator-(const channel_view_iterator<View> &b) const -> difference_type {
+  return static_cast<difference_type>(idx_) -
+         static_cast<difference_type>(b.idx_);
+}
+template <class View>
+auto channel_view_iterator<View>::operator[](size_t i) const -> value_type {
+  return (*view_)[idx_ + i];
+}
+template <class View> void channel_view_iterator<View>::set_end() {
+  idx_ = end_idx_;
+}
+}
+}
 }
 
 #endif
