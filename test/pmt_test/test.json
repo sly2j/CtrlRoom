@@ -1,12 +1,13 @@
 {
     "experiment": {
-        "name": "SPE",
-        "calibrationDirectory": "/daq/pmt_coat/calibrations/2014-04-25",
-        "outputDirectory": "/daq/pmt_coat/prod/SPE/run00002_right",
+        "name": "pedestal",
+        "calibrationDirectory": "/daq/pmt_coat/calibrations/2014-05-20",
+        "outputDirectory": "/daq/pmt_coat/prod/misc/run00034_pedestal",
         "nPulses": "50",
         "nIntegratedPulses": "100000",
-        "integrationRange": [1340, 1400],
-        "histoRange": [-100, 5000],
+        "integrationRange": [600, 1500],
+        "histoRange": [-600, 600],
+        "fitHisto": "gaus",
         "PMT": {
             "center": "none",
             "left": "none",
@@ -26,13 +27,13 @@
         "model": "CAEN_V1729a",
         "triggerType": "internal",
         "triggerSettings": ["falling"],
-        "triggerThreshold": "-3",
+        "triggerThreshold": "-200",
         "preTrig": 10240,
-        "postTrig": 50,
+        "postTrig": 60,
         "samplingFrequency": "2GHz",
         "IRQ": "IRQ3",
         "channels": [
-            "right", 
+            "center", 
             "none", 
             "none", 
             "none"

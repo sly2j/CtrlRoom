@@ -23,7 +23,7 @@ class caen_bridge : public vme::master<caen_bridge> {
 public:
   using base_type = vme::master<caen_bridge>;
 
-  caen_bridge(const std::string &identifier, const ptree &settings);
+  caen_bridge(const std::string& identifier, const ptree& settings);
 
   ~caen_bridge();
 
@@ -66,7 +66,7 @@ private:
   // calculate the IRQ mask from base_type::irq_
   uint32_t calc_irq_mask() const;
 
-  vme::error decode_error(const CVErrorCodes err, const std::string &msg) const;
+  vme::error decode_error(const CVErrorCodes err, const std::string& msg) const;
 
   int32_t handle_;
   const CVBoardTypes model_;
@@ -90,41 +90,41 @@ size_t
 caen_bridge::read_single(const typename address_spec<A>::ptr_type address,
                          typename transfer_spec<D>::ptr_type val) const {
 
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::DATA) };
-  constexpr CVDataWidth width{ static_cast<CVDataWidth>(
-      transfer_spec<D>::WIDTH) };
-  CVErrorCodes err{ CAENVME_ReadCycle(handle_, address, val, am, width) };
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::DATA)};
+  constexpr CVDataWidth width{
+      static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)};
+  CVErrorCodes err{CAENVME_ReadCycle(handle_, address, val, am, width)};
   HANDLE_CAEN_ERROR(err, "ReadCycle call failed");
-  return { 1 };
+  return {1};
 }
 template <addressing_mode A, transfer_mode D>
 size_t
 caen_bridge::write_single(const typename address_spec<A>::ptr_type address,
                           typename transfer_spec<D>::ptr_type val) const {
 
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::DATA) };
-  constexpr CVDataWidth width{ static_cast<CVDataWidth>(
-      transfer_spec<D>::WIDTH) };
-  CVErrorCodes err{ CAENVME_WriteCycle(handle_, address, val, am, width) };
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::DATA)};
+  constexpr CVDataWidth width{
+      static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)};
+  CVErrorCodes err{CAENVME_WriteCycle(handle_, address, val, am, width)};
   HANDLE_CAEN_ERROR(err, "WriteCycle call failed");
-  return { 1 };
+  return {1};
 }
 
 template <addressing_mode A, transfer_mode D>
 size_t caen_bridge::read_blt(const typename address_spec<A>::ptr_type address,
                              typename transfer_spec<D>::ptr_type buf,
                              size_t n_requests) const {
-  int n_read{ 0 };
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::BLT) };
-  constexpr CVDataWidth width{ static_cast<CVDataWidth>(
-      transfer_spec<D>::WIDTH) };
+  int n_read{0};
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::BLT)};
+  constexpr CVDataWidth width{
+      static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)};
   // requests in bytes
   n_requests *= transfer_spec<D>::WIDTH;
-  CVErrorCodes err{ CAENVME_BLTReadCycle(handle_, address, buf, n_requests, am,
-                                         width, &n_read) };
+  CVErrorCodes err{CAENVME_BLTReadCycle(handle_, address, buf, n_requests, am,
+                                        width, &n_read)};
   HANDLE_CAEN_ERROR(err, "BLTReadCycle failed");
   // number of read values in D words
   n_read /= transfer_spec<D>::WIDTH;
@@ -134,15 +134,15 @@ template <addressing_mode A, transfer_mode D>
 size_t caen_bridge::write_blt(const typename address_spec<A>::ptr_type address,
                               typename transfer_spec<D>::ptr_type buf,
                               size_t n_requests) const {
-  int n_written{ 0 };
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::BLT) };
-  constexpr CVDataWidth width{ static_cast<CVDataWidth>(
-      transfer_spec<D>::WIDTH) };
+  int n_written{0};
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::BLT)};
+  constexpr CVDataWidth width{
+      static_cast<CVDataWidth>(transfer_spec<D>::WIDTH)};
   // requests in bytes
   n_requests *= transfer_spec<D>::WIDTH;
-  CVErrorCodes err{ CAENVME_BLTWriteCycle(handle_, address, buf, n_requests, am,
-                                          width, &n_written) };
+  CVErrorCodes err{CAENVME_BLTWriteCycle(handle_, address, buf, n_requests, am,
+                                         width, &n_written)};
   HANDLE_CAEN_ERROR(err, "BLTWriteCycle failed");
   // number of written values in D words
   n_written /= transfer_spec<D>::WIDTH;
@@ -152,13 +152,13 @@ template <addressing_mode A>
 size_t caen_bridge::read_mblt(const typename address_spec<A>::ptr_type address,
                               transfer_spec<transfer_mode::MBLT>::ptr_type buf,
                               size_t n_requests) const {
-  int n_read{ 0 };
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::MBLT) };
+  int n_read{0};
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::MBLT)};
   // requests in bytes
   n_requests *= transfer_spec<transfer_mode::MBLT>::WIDTH;
-  CVErrorCodes err{ CAENVME_MBLTReadCycle(handle_, address, buf, n_requests, am,
-                                          &n_read) };
+  CVErrorCodes err{
+      CAENVME_MBLTReadCycle(handle_, address, buf, n_requests, am, &n_read)};
   // DBG
   // DBGstatic unsigned DBG {0};
   // DBGfor (unsigned i {0}; i < n_read/8; ++i) {
@@ -176,13 +176,13 @@ template <addressing_mode A>
 size_t caen_bridge::write_mblt(const typename address_spec<A>::ptr_type address,
                                transfer_spec<transfer_mode::MBLT>::ptr_type buf,
                                size_t n_requests) const {
-  int n_written{ 0 };
-  constexpr CVAddressModifier am{ static_cast<CVAddressModifier>(
-      address_spec<A>::MBLT) };
+  int n_written{0};
+  constexpr CVAddressModifier am{
+      static_cast<CVAddressModifier>(address_spec<A>::MBLT)};
   // requests in bytes
   n_requests *= transfer_spec<transfer_mode::MBLT>::WIDTH;
-  CVErrorCodes err{ CAENVME_MBLTWriteCycle(handle_, address, buf, n_requests,
-                                           am, &n_written) };
+  CVErrorCodes err{CAENVME_MBLTWriteCycle(handle_, address, buf, n_requests, am,
+                                          &n_written)};
   HANDLE_CAEN_ERROR(err, "MBLTWriteCycle failed");
   // number of written values in 64-bit words
   n_written /= transfer_spec<transfer_mode::MBLT>::WIDTH;

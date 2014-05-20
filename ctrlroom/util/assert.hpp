@@ -12,12 +12,12 @@
   }
 
 namespace ctrlroom {
-inline void tassert_impl(const std::string &condition,
-                         const std::string &location, const int line,
-                         const std::string &msg) {
+inline void tassert_impl(const std::string& condition,
+                         const std::string& location, const int line,
+                         const std::string& msg) {
   LOG_ERROR(location,
             "l" + std::to_string(line) + ": assert(" + condition + ") failed");
-  throw exception{ msg, "assert" };
+  throw exception{msg, "assert"};
 }
 }
 

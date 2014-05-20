@@ -36,16 +36,19 @@ class configuration_translation_error;
 // in the associated settings ptree.
 class configuration {
 public:
-  configuration(const std::string &identifier, const ptree &settings,
-                const std::string &defaults_path = "defaults",
-                const std::string &model_key = "model");
+  configuration(const std::string& identifier, const ptree& settings,
+                const std::string& defaults_path = "defaults",
+                const std::string& model_key = "model");
 
   // load the settings from a given ptree
-  void load(const ptree &in_conf);
+  void load(const ptree& in_conf);
 
   // store the settings in the give ptree
   // The defaults are only exported if not yet present.
-  void save(ptree &out_conf) const;
+  void save(ptree& out_conf) const;
+
+  // get the model info
+  const std::string& model() const { return model_key_; }
 
   // Three pairs of functions to get a setting by its key.
   //
@@ -54,64 +57,64 @@ public:
   // configuration_translation_error if the lookup failed.
   //
   // 1. optional version
-  template <class T> optional<T> get_optional(const std::string &key) const;
+  template <class T> optional<T> get_optional(const std::string& key) const;
   template <class T>
-  optional<T> get_optional(const std::string &key,
-                           const translation_map<T> &tr) const;
+  optional<T> get_optional(const std::string& key,
+                           const translation_map<T>& tr) const;
   // 2. Throwing version
-  template <class T> T get(const std::string &key) const;
+  template <class T> T get(const std::string& key) const;
   template <class T>
-  T get(const std::string &key, const translation_map<T> &tr) const;
+  T get(const std::string& key, const translation_map<T>& tr) const;
   // 3. default-value version
   //      if default_value is needed, it is automatically added to
   //      the default configurations for this board
   template <class T, class = typename std::enable_if<!is_map<T>::value>::type>
-  T get(const std::string &key, const T &default_value);
+  T get(const std::string& key, const T& default_value);
   template <class T>
-  T get(const std::string &key, const T &default_value,
-        const translation_map<T> &tr);
+  T get(const std::string& key, const T& default_value,
+        const translation_map<T>& tr);
   // same getters, but in vector version
   // 1. optional version
   template <class T>
-  optional<std::vector<T> > get_optional_vector(const std::string &key) const;
+  optional<std::vector<T>> get_optional_vector(const std::string& key) const;
   template <class T>
-  optional<std::vector<T> >
-  get_optional_vector(const std::string &key,
-                      const translation_map<T> &tr) const;
+  optional<std::vector<T>>
+  get_optional_vector(const std::string& key,
+                      const translation_map<T>& tr) const;
   // 2. Throwing version
-  template <class T> std::vector<T> get_vector(const std::string &key) const;
+  template <class T> std::vector<T> get_vector(const std::string& key) const;
   template <class T>
-  std::vector<T> get_vector(const std::string &key,
-                            const translation_map<T> &tr) const;
+  std::vector<T> get_vector(const std::string& key,
+                            const translation_map<T>& tr) const;
   // special version to create bit pattern of a vector of
   // bit patterns
   // 1. optional versions
   template <class T>
-  optional<T> get_optional_bitpattern(const std::string &key) const;
+  optional<T> get_optional_bitpattern(const std::string& key) const;
   template <class T>
-  optional<T> get_optional_bitpattern(const std::string &key,
-                                      const translation_map<T> &tr) const;
+  optional<T> get_optional_bitpattern(const std::string& key,
+                                      const translation_map<T>& tr) const;
   // 2. throwing versions
-  template <class T> T get_bitpattern(const std::string &key) const;
+  template <class T> T get_bitpattern(const std::string& key) const;
   template <class T>
-  T get_bitpattern(const std::string &key, const translation_map<T> &tr) const;
+  T get_bitpattern(const std::string& key, const translation_map<T>& tr) const;
 
   // Helper functions to construct exceptions
-  configuration_path_error path_error(const std::string &path) const;
-  configuration_key_error key_error(const std::string &key) const;
-  configuration_value_error value_error(const std::string &key,
-                                        const std::string &value) const;
+  configuration_path_error path_error(const std::string& path) const;
+  configuration_key_error key_error(const std::string& key) const;
+  configuration_value_error value_error(const std::string& key,
+                                        const std::string& value) const;
   configuration_translation_error
-  translation_error(const std::string &key, const std::string &value) const;
+  translation_error(const std::string& key, const std::string& value) const;
   template <class T>
   configuration_translation_error
-  translation_error(const std::string &key, const std::string &value,
-                    const translation_map<T> &tr) const;
+  translation_error(const std::string& key, const std::string& value,
+                    const translation_map<T>& tr) const;
 
 private:
   template <class T>
   T translate(const std::string key, const std::string val,
-              const translation_map<T> &tr) const;
+              const translation_map<T>& tr) const;
 
   // settings
   const std::string settings_path_;
@@ -130,66 +133,65 @@ namespace ctrlroom {
 // exceptions
 class configuration_error : public ctrlroom::exception {
 public:
-  configuration_error(const std::string &msg,
-                      const std::string &type = "configuration_error")
-      : ctrlroom::exception{ msg, type } {}
+  configuration_error(const std::string& msg,
+                      const std::string& type = "configuration_error")
+      : ctrlroom::exception{msg, type} {}
 };
 
 class configuration_path_error : public configuration_error {
 public:
-  configuration_path_error(const std::string &path);
+  configuration_path_error(const std::string& path);
 };
 class configuration_key_error : public configuration_error {
 public:
-  configuration_key_error(const std::string &key,
-                          const std::string &settings_path,
-                          const std::string &defaults_path);
+  configuration_key_error(const std::string& key,
+                          const std::string& settings_path,
+                          const std::string& defaults_path);
 };
 
 class configuration_value_error : public configuration_error {
 public:
-  configuration_value_error(const std::string &key, const std::string &value,
-                            const std::string &settings_path,
-                            const std::string &defaults_path);
+  configuration_value_error(const std::string& key, const std::string& value,
+                            const std::string& settings_path,
+                            const std::string& defaults_path);
 };
 class configuration_translation_error : public configuration_error {
 public:
-  configuration_translation_error(const std::string &key,
-                                  const std::string &value,
-                                  const std::string &settings_path,
-                                  const std::string &defaults_path);
+  configuration_translation_error(const std::string& key,
+                                  const std::string& value,
+                                  const std::string& settings_path,
+                                  const std::string& defaults_path);
   template <class T>
-  configuration_translation_error(const std::string &key,
-                                  const std::string &value,
-                                  const translation_map<T> &tr,
-                                  const std::string &settings_path,
-                                  const std::string &defaults_path);
+  configuration_translation_error(const std::string& key,
+                                  const std::string& value,
+                                  const translation_map<T>& tr,
+                                  const std::string& settings_path,
+                                  const std::string& defaults_path);
 };
 
 // configuration getters
 template <class T>
-optional<T> configuration::get_optional(const std::string &key) const {
+optional<T> configuration::get_optional(const std::string& key) const {
   try {
     auto s = settings_.get_optional<T>(key);
     if (!s) {
       s = defaults_.get_optional<T>(key);
     }
     return s;
-  }
-  catch (boost::property_tree::ptree_bad_data &e) {
+  } catch (boost::property_tree::ptree_bad_data& e) {
     throw translation_error(key, e.data<std::string>());
   }
 }
 template <class T>
-optional<T> configuration::get_optional(const std::string &key,
-                                        const translation_map<T> &tr) const {
+optional<T> configuration::get_optional(const std::string& key,
+                                        const translation_map<T>& tr) const {
   auto s = get_optional<std::string>(key);
   if (!s) {
     return {};
   }
-  return { translate(key, *s, tr) };
+  return {translate(key, *s, tr)};
 }
-template <class T> T configuration::get(const std::string &key) const {
+template <class T> T configuration::get(const std::string& key) const {
   auto s = get_optional<T>(key);
   if (!s) {
     throw key_error(key);
@@ -197,13 +199,13 @@ template <class T> T configuration::get(const std::string &key) const {
   return *s;
 }
 template <class T>
-T configuration::get(const std::string &key,
-                     const translation_map<T> &tr) const {
-  std::string val{ get<std::string>(key) };
+T configuration::get(const std::string& key,
+                     const translation_map<T>& tr) const {
+  std::string val{get<std::string>(key)};
   return translate(key, val, tr);
 }
 template <class T, class>
-T configuration::get(const std::string &key, const T &default_value) {
+T configuration::get(const std::string& key, const T& default_value) {
   auto s = get_optional<T>(key);
   if (!s) {
     defaults_.put(key, default_value);
@@ -212,23 +214,23 @@ T configuration::get(const std::string &key, const T &default_value) {
   return *s;
 }
 template <class T>
-T configuration::get(const std::string &key, const T &default_value,
-                     const translation_map<T> &tr) {
-  std::string val{ get(key, default_value) };
+T configuration::get(const std::string& key, const T& default_value,
+                     const translation_map<T>& tr) {
+  std::string val{get(key, default_value)};
   return translate(key, val, tr);
 }
 // and vector versions
 template <class T>
-optional<std::vector<T> >
-configuration::get_optional_vector(const std::string &key) const {
-  optional<std::vector<T> > vec;
+optional<std::vector<T>>
+configuration::get_optional_vector(const std::string& key) const {
+  optional<std::vector<T>> vec;
   auto node = settings_.get_child_optional(key);
   if (!node) {
     node = defaults_.get_child_optional(key);
   }
   if (node) {
     vec.reset(std::vector<T>());
-    for (const auto &child : *node) {
+    for (const auto& child : *node) {
       auto val = child.second.get_value_optional<T>();
       if (val) {
         vec->push_back(*val);
@@ -238,21 +240,21 @@ configuration::get_optional_vector(const std::string &key) const {
   return vec;
 }
 template <class T>
-optional<std::vector<T> >
-configuration::get_optional_vector(const std::string &key,
-                                   const translation_map<T> &tr) const {
-  optional<std::vector<T> > vec;
+optional<std::vector<T>>
+configuration::get_optional_vector(const std::string& key,
+                                   const translation_map<T>& tr) const {
+  optional<std::vector<T>> vec;
   auto vec_str = get_optional_vector<std::string>(key);
   if (vec_str) {
     vec.reset(std::vector<T>());
-    for (const auto &el : *vec_str) {
+    for (const auto& el : *vec_str) {
       vec->push_back(translate(key, el, tr));
     }
   }
   return vec;
 }
 template <class T>
-std::vector<T> configuration::get_vector(const std::string &key) const {
+std::vector<T> configuration::get_vector(const std::string& key) const {
   auto s = get_optional_vector<T>(key);
   if (!s) {
     throw key_error(key);
@@ -260,8 +262,8 @@ std::vector<T> configuration::get_vector(const std::string &key) const {
   return *s;
 }
 template <class T>
-std::vector<T> configuration::get_vector(const std::string &key,
-                                         const translation_map<T> &tr) const {
+std::vector<T> configuration::get_vector(const std::string& key,
+                                         const translation_map<T>& tr) const {
   auto s = get_optional_vector<T>(key, tr);
   if (!s) {
     throw key_error(key);
@@ -271,12 +273,12 @@ std::vector<T> configuration::get_vector(const std::string &key,
 // and bitpattern versiosn
 template <class T>
 optional<T>
-configuration::get_optional_bitpattern(const std::string &key) const {
-  optional<std::vector<T> > vec{ get_optional_vector<T>(key) };
+configuration::get_optional_bitpattern(const std::string& key) const {
+  optional<std::vector<T>> vec{get_optional_vector<T>(key)};
   optional<T> pattern;
   if (vec) {
     pattern.reset(static_cast<T>(0));
-    for (const auto &val : *vec) {
+    for (const auto& val : *vec) {
       *pattern = static_cast<T>(*pattern | val);
     }
   }
@@ -284,20 +286,20 @@ configuration::get_optional_bitpattern(const std::string &key) const {
 }
 template <class T>
 optional<T>
-configuration::get_optional_bitpattern(const std::string &key,
-                                       const translation_map<T> &tr) const {
-  optional<std::vector<T> > vec{ get_optional_vector(key, tr) };
+configuration::get_optional_bitpattern(const std::string& key,
+                                       const translation_map<T>& tr) const {
+  optional<std::vector<T>> vec{get_optional_vector(key, tr)};
   optional<T> pattern;
   if (vec) {
     pattern.reset(static_cast<T>(0));
-    for (const auto &val : *vec) {
+    for (const auto& val : *vec) {
       *pattern = static_cast<T>(*pattern | val);
     }
   }
   return pattern;
 }
 template <class T>
-T configuration::get_bitpattern(const std::string &key) const {
+T configuration::get_bitpattern(const std::string& key) const {
   auto s = get_optional_bitpattern<T>(key);
   if (!s) {
     throw key_error(key);
@@ -305,8 +307,8 @@ T configuration::get_bitpattern(const std::string &key) const {
   return *s;
 }
 template <class T>
-T configuration::get_bitpattern(const std::string &key,
-                                const translation_map<T> &tr) const {
+T configuration::get_bitpattern(const std::string& key,
+                                const translation_map<T>& tr) const {
   auto s = get_optional_bitpattern<T>(key, tr);
   if (!s) {
     throw key_error(key);
@@ -316,20 +318,19 @@ T configuration::get_bitpattern(const std::string &key,
 // configuration_translation_error<T> impl
 template <class T>
 configuration_translation_error
-configuration::translation_error(const std::string &key,
-                                 const std::string &value,
-                                 const translation_map<T> &tr) const {
-  return { key, value, tr, settings_path_, defaults_path_ };
+configuration::translation_error(const std::string& key,
+                                 const std::string& value,
+                                 const translation_map<T>& tr) const {
+  return {key, value, tr, settings_path_, defaults_path_};
 }
 
 // "manual" translation (private)
 template <class T>
 T configuration::translate(const std::string key, const std::string val,
-                           const translation_map<T> &tr) const {
+                           const translation_map<T>& tr) const {
   try {
     return tr.at(val);
-  }
-  catch (std::out_of_range) {
+  } catch (std::out_of_range) {
     throw translation_error(key, val, tr);
   }
 }
@@ -337,15 +338,15 @@ T configuration::translate(const std::string key, const std::string val,
 // further configuration_translation_error implementation
 template <class T>
 configuration_translation_error::configuration_translation_error(
-    const std::string &key, const std::string &value,
-    const translation_map<T> &tr, const std::string &settings_path,
-    const std::string &defaults_path)
+    const std::string& key, const std::string& value,
+    const translation_map<T>& tr, const std::string& settings_path,
+    const std::string& defaults_path)
     : configuration_error(
           "Unable to translate value '" + value + "' for key '" + key +
               "' (in '" + settings_path + "' or '" + defaults_path +
               "' -- allowed values: '" +
               stringify(tr, "', '",
-                        [](const typename translation_map<T>::value_type &el) {
+                        [](const typename translation_map<T>::value_type& el) {
                 return el.first;
               }) +
               "')",

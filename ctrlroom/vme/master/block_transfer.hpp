@@ -34,7 +34,7 @@ namespace master_impl {
 template <addressing_mode A, transfer_mode D> struct dispatch_read {
   template <class Master>
   static unsigned
-  call(const Master &m, const typename address_spec<A>::ptr_type address,
+  call(const Master& m, const typename address_spec<A>::ptr_type address,
        typename transfer_spec<D>::ptr_type vptr, const unsigned n_requests) {
     return m.impl().template read_blt<A, D>(address, vptr, n_requests);
   }
@@ -42,7 +42,7 @@ template <addressing_mode A, transfer_mode D> struct dispatch_read {
 template <addressing_mode A, transfer_mode D> struct dispatch_write {
   template <class Master>
   static unsigned
-  call(const Master &m, const typename address_spec<A>::ptr_type address,
+  call(const Master& m, const typename address_spec<A>::ptr_type address,
        typename transfer_spec<D>::ptr_type vptr, const unsigned n_requests) {
     return m.impl().template write_blt<A, D>(address, vptr, n_requests);
   }
@@ -50,7 +50,7 @@ template <addressing_mode A, transfer_mode D> struct dispatch_write {
 // specialization for md32
 template <addressing_mode A> struct dispatch_read<A, transfer_mode::MD32> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::MD32>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -59,7 +59,7 @@ template <addressing_mode A> struct dispatch_read<A, transfer_mode::MD32> {
 };
 template <addressing_mode A> struct dispatch_write<A, transfer_mode::MD32> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::MD32>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -69,7 +69,7 @@ template <addressing_mode A> struct dispatch_write<A, transfer_mode::MD32> {
 // specialization for mblt
 template <addressing_mode A> struct dispatch_read<A, transfer_mode::MBLT> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::MBLT>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -78,7 +78,7 @@ template <addressing_mode A> struct dispatch_read<A, transfer_mode::MBLT> {
 };
 template <addressing_mode A> struct dispatch_write<A, transfer_mode::MBLT> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::MBLT>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -88,7 +88,7 @@ template <addressing_mode A> struct dispatch_write<A, transfer_mode::MBLT> {
 // specialization for 2evme (3u)
 template <addressing_mode A> struct dispatch_read<A, transfer_mode::U3_2eVME> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::U3_2eVME>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -97,7 +97,7 @@ template <addressing_mode A> struct dispatch_read<A, transfer_mode::U3_2eVME> {
 };
 template <addressing_mode A> struct dispatch_write<A, transfer_mode::U3_2eVME> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::U3_2eVME>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -107,7 +107,7 @@ template <addressing_mode A> struct dispatch_write<A, transfer_mode::U3_2eVME> {
 // specialization for 2evme (6u)
 template <addressing_mode A> struct dispatch_read<A, transfer_mode::U6_2eVME> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::U6_2eVME>::ptr_type vptr,
                        const unsigned n_requests) {
@@ -116,7 +116,7 @@ template <addressing_mode A> struct dispatch_read<A, transfer_mode::U6_2eVME> {
 };
 template <addressing_mode A> struct dispatch_write<A, transfer_mode::U6_2eVME> {
   template <class Master>
-  static unsigned call(const Master &m,
+  static unsigned call(const Master& m,
                        const typename address_spec<A>::ptr_type address,
                        transfer_spec<transfer_mode::U6_2eVME>::ptr_type vptr,
                        const unsigned n_requests) {

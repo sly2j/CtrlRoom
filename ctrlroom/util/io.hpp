@@ -21,21 +21,21 @@ namespace ctrlroom {
 // exceptions
 class io_error : public ctrlroom::exception {
 public:
-  io_error(const std::string &msg, const std::string &type = "io_error");
+  io_error(const std::string& msg, const std::string& type = "io_error");
 };
 class io_read_error : public io_error {
 public:
-  io_read_error(const std::string &msg = "Failed to read file",
-                const std::string &type = "io_read_error");
+  io_read_error(const std::string& msg = "Failed to read file",
+                const std::string& type = "io_read_error");
 };
 class io_write_error : public io_error {
 public:
-  io_write_error(const std::string &msg = "Failed to write to file",
-                 const std::string &type = "io_write_error");
+  io_write_error(const std::string& msg = "Failed to write to file",
+                 const std::string& type = "io_write_error");
 };
 
-std::string make_filename(const std::string &dir, const std::string &base,
-                          const std::string &extra = "");
+std::string make_filename(const std::string& dir, const std::string& base,
+                          const std::string& extra = "");
 }
 
 // include all subheaders only if io.hpp is included directly

@@ -47,20 +47,20 @@ class timeout_error;
 //      * TIMEOUT (in [ms]): <id>.timeout (defaults to 1000)
 template <class MasterImpl> class master : public board {
 public:
-  constexpr static const char *LINK_INDEX_KEY{ "linkIndex" };
-  constexpr static const char *BOARD_INDEX_KEY{ "boardIndex" };
-  constexpr static const char *IRQ_KEY{ "IRQ" };
-  constexpr static const char *TIMEOUT_KEY{ "timeout" };
+  constexpr static const char* LINK_INDEX_KEY{"linkIndex"};
+  constexpr static const char* BOARD_INDEX_KEY{"boardIndex"};
+  constexpr static const char* IRQ_KEY{"IRQ"};
+  constexpr static const char* TIMEOUT_KEY{"timeout"};
 
-  constexpr static size_t DEFAULT_TIMEOUT{ 1000 }; // in [ms]
+  constexpr static size_t DEFAULT_TIMEOUT{1000}; // in [ms]
 
   using base_type = board;
   using master_type = MasterImpl;
 
-  master(const std::string &identifier, const ptree &settings);
+  master(const std::string& identifier, const ptree& settings);
   ~master();
 
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   // wait for the next IRQ
   void wait_for_irq() const;
@@ -74,7 +74,7 @@ public:
   template <addressing_mode A, transfer_mode D,
             class = typename std::enable_if<!is_multiplexed<D>::value>::type>
   size_t read(const typename address_spec<A>::ptr_type address,
-              typename transfer_spec<D>::value_type &val) const;
+              typename transfer_spec<D>::value_type& val) const;
   // READ a block of values from <address> to <vals>
   // for all different types of block transfer (deduced from A and D)
   //
@@ -83,14 +83,14 @@ public:
   // were requested. This case should be handled by the caller.
   template <addressing_mode A, transfer_mode D, class IntType, size_t N>
   size_t read(const typename address_spec<A>::ptr_type address,
-              std::array<IntType, N> &vals) const;
+              std::array<IntType, N>& vals) const;
   // WRITE a single value from <val> to <address> for transfer mode
   // D08_*, D16 or D32
   // returns the number of transactions (i.e., 1 if all went well)
   template <addressing_mode A, transfer_mode D,
             class = typename std::enable_if<!is_multiplexed<D>::value>::type>
   size_t write(const typename address_spec<A>::ptr_type address,
-               typename transfer_spec<D>::value_type &val) const;
+               typename transfer_spec<D>::value_type& val) const;
   // WRITE a block of values from <vals> to <address>
   // for all different types of block transfer (deduced from A and D)
   //
@@ -99,13 +99,13 @@ public:
   // were requested. This case should be handled by the caller.
   template <addressing_mode A, transfer_mode D, class IntType, size_t N>
   size_t write(const typename address_spec<A>::ptr_type address,
-               std::array<IntType, N> &vals) const;
+               std::array<IntType, N>& vals) const;
 
-  vme::error error(const std::string &msg) const;
-  vme::bus_error bus_error(const std::string &msg) const;
-  vme::comm_error comm_error(const std::string &msg) const;
-  vme::invalid_parameter invalid_parameter(const std::string &msg) const;
-  vme::timeout_error timeout_error(const std::string &msg) const;
+  vme::error error(const std::string& msg) const;
+  vme::bus_error bus_error(const std::string& msg) const;
+  vme::comm_error comm_error(const std::string& msg) const;
+  vme::invalid_parameter invalid_parameter(const std::string& msg) const;
+  vme::timeout_error timeout_error(const std::string& msg) const;
 
 protected:
   // READ/WRITE placeholder functions, to be replaced in MasterImpl if
@@ -170,9 +170,9 @@ protected:
   const unsigned timeout_; // timeout level in [ms]
 
 private:
-  master_type &impl() { return static_cast<master_type &>(*this); }
-  const master_type &impl() const {
-    return static_cast<const master_type &>(*this);
+  master_type& impl() { return static_cast<master_type&>(*this); }
+  const master_type& impl() const {
+    return static_cast<const master_type&>(*this);
   }
 
   // block transfer dispatchers (from master/block_transfer.hpp)
@@ -187,11 +187,11 @@ private:
   template <addressing_mode A, transfer_mode D, class IntType, size_t N,
             template <addressing_mode, transfer_mode> class Dispatcher>
   size_t block_transfer(const typename address_spec<A>::ptr_type address,
-                        std::array<IntType, N> &vals) const;
+                        std::array<IntType, N>& vals) const;
 
   // DRY helper function for the various ::error methods
-  template <class Error> Error error_helper(const std::string &msg) const {
-    return { name_, link_index_, board_index_, msg };
+  template <class Error> Error error_helper(const std::string& msg) const {
+    return {name_, link_index_, board_index_, msg};
   }
 };
 }
@@ -204,29 +204,29 @@ namespace ctrlroom {
 namespace vme {
 class error : public ctrlroom::exception {
 public:
-  error(const std::string &board_name, const short link_index,
-        const short board_index, const std::string &msg,
-        const std::string &type = "error");
+  error(const std::string& board_name, const short link_index,
+        const short board_index, const std::string& msg,
+        const std::string& type = "error");
 };
 class bus_error : public error {
 public:
-  bus_error(const std::string &board_name, const short link_index,
-            const short board_index, const std::string &msg);
+  bus_error(const std::string& board_name, const short link_index,
+            const short board_index, const std::string& msg);
 };
 class comm_error : public error {
 public:
-  comm_error(const std::string &board_name, const short link_index,
-             const short board_index, const std::string &msg);
+  comm_error(const std::string& board_name, const short link_index,
+             const short board_index, const std::string& msg);
 };
 class invalid_parameter : public error {
 public:
-  invalid_parameter(const std::string &board_name, const short link_index,
-                    const short board_index, const std::string &msg);
+  invalid_parameter(const std::string& board_name, const short link_index,
+                    const short board_index, const std::string& msg);
 };
 class timeout_error : public error {
 public:
-  timeout_error(const std::string &board_name, const short link_index,
-                const short board_index, const std::string &msg);
+  timeout_error(const std::string& board_name, const short link_index,
+                const short board_index, const std::string& msg);
 };
 }
 }
@@ -241,12 +241,12 @@ extern const translation_map<irq_level> IRQ_TRANSLATOR;
 
 // constructor
 template <class MasterImpl>
-master<MasterImpl>::master(const std::string &identifier, const ptree &settings)
-    : base_type{ identifier, settings },
-      link_index_{ conf_.get<short>(LINK_INDEX_KEY) },
-      board_index_{ conf_.get<short>(BOARD_INDEX_KEY) },
-      irq_{ conf_.get_vector<irq_level>(IRQ_KEY, IRQ_TRANSLATOR) },
-      timeout_{ conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT) } {
+master<MasterImpl>::master(const std::string& identifier, const ptree& settings)
+    : base_type{identifier, settings}
+    , link_index_{conf_.get<short>(LINK_INDEX_KEY)}
+    , board_index_{conf_.get<short>(BOARD_INDEX_KEY)}
+    , irq_{conf_.get_vector<irq_level>(IRQ_KEY, IRQ_TRANSLATOR)}
+    , timeout_{conf_.get<unsigned>(TIMEOUT_KEY, DEFAULT_TIMEOUT)} {
   LOG_INFO(name(), "Initializing master module");
   if (timeout_ == 0) {
     throw conf_.value_error(TIMEOUT_KEY, std::to_string(timeout_));
@@ -262,14 +262,14 @@ template <class MasterImpl>
 template <addressing_mode A, transfer_mode D, class>
 size_t
 master<MasterImpl>::read(const typename address_spec<A>::ptr_type address,
-                         typename transfer_spec<D>::value_type &val) const {
+                         typename transfer_spec<D>::value_type& val) const {
   return impl().template read_single<A, D>(address, &val);
 }
 template <class MasterImpl>
 template <addressing_mode A, transfer_mode D, class IntType, size_t N>
 size_t
 master<MasterImpl>::read(const typename address_spec<A>::ptr_type address,
-                         std::array<IntType, N> &vals) const {
+                         std::array<IntType, N>& vals) const {
   return block_transfer<A, D, IntType, N, master_impl::dispatch_read>(address,
                                                                       vals);
 }
@@ -279,14 +279,14 @@ template <class MasterImpl>
 template <addressing_mode A, transfer_mode D, class>
 size_t
 master<MasterImpl>::write(const typename address_spec<A>::ptr_type address,
-                          typename transfer_spec<D>::value_type &val) const {
+                          typename transfer_spec<D>::value_type& val) const {
   return impl().template write_single<A, D>(address, &val);
 }
 template <class MasterImpl>
 template <addressing_mode A, transfer_mode D, class IntType, size_t N>
 size_t
 master<MasterImpl>::write(const typename address_spec<A>::ptr_type address,
-                          std::array<IntType, N> &vals) const {
+                          std::array<IntType, N>& vals) const {
   return block_transfer<A, D, IntType, N, master_impl::dispatch_write>(address,
                                                                        vals);
 }
@@ -297,27 +297,26 @@ template <addressing_mode A, transfer_mode D, class IntType, size_t N,
           template <addressing_mode, transfer_mode> class Dispatcher>
 size_t master<MasterImpl>::block_transfer(
     const typename address_spec<A>::ptr_type address,
-    std::array<IntType, N> &vals) const {
+    std::array<IntType, N>& vals) const {
 
   // number of elements to copy, in VME data width
-  size_t n_to_copy{ N * sizeof(IntType) / transfer_spec<D>::WIDTH };
+  size_t n_to_copy{N * sizeof(IntType) / transfer_spec<D>::WIDTH};
 
   // number of entries in the array
-  size_t n_filled{ 0 };
+  size_t n_filled{0};
 
   // loop over the necessary amount of block transfers,
   // taking into account the maximum allowed length block transfer lengths
-  for (size_t n_blocks{ 1 + (n_to_copy - 1) / transfer_spec<D>::BLOCK_LENGTH };
+  for (size_t n_blocks{1 + (n_to_copy - 1) / transfer_spec<D>::BLOCK_LENGTH};
        n_blocks > 0; --n_blocks) {
 
     // number of transactions for this block
-    size_t n{ n_blocks == 1 ? n_to_copy : transfer_spec<D>::BLOCK_LENGTH };
+    size_t n{n_blocks == 1 ? n_to_copy : transfer_spec<D>::BLOCK_LENGTH};
     typename transfer_spec<D>::ptr_type vptr{
-      reinterpret_cast<typename transfer_spec<D>::ptr_type>(&vals[n_filled])
-    };
+        reinterpret_cast<typename transfer_spec<D>::ptr_type>(&vals[n_filled])};
 
     // number of completed transactions in this call.
-    size_t n_copied{ Dispatcher<A, D>::call(*this, address, vptr, n) };
+    size_t n_copied{Dispatcher<A, D>::call(*this, address, vptr, n)};
 
     n_filled += n_copied * transfer_spec<D>::WIDTH / sizeof(IntType);
     n_to_copy -= n_copied;
@@ -335,25 +334,25 @@ template <class MasterImpl> void master<MasterImpl>::wait_for_irq() const {
 
 // exceptions
 template <class MasterImpl>
-vme::error master<MasterImpl>::error(const std::string &msg) const {
+vme::error master<MasterImpl>::error(const std::string& msg) const {
   return error_helper<vme::error>(msg);
 }
 template <class MasterImpl>
-vme::bus_error master<MasterImpl>::bus_error(const std::string &msg) const {
+vme::bus_error master<MasterImpl>::bus_error(const std::string& msg) const {
   return error_helper<vme::bus_error>(msg);
 }
 template <class MasterImpl>
-vme::comm_error master<MasterImpl>::comm_error(const std::string &msg) const {
+vme::comm_error master<MasterImpl>::comm_error(const std::string& msg) const {
   return error_helper<vme::comm_error>(msg);
 }
 template <class MasterImpl>
 vme::invalid_parameter
-master<MasterImpl>::invalid_parameter(const std::string &msg) const {
+master<MasterImpl>::invalid_parameter(const std::string& msg) const {
   return error_helper<vme::invalid_parameter>(msg);
 }
 template <class MasterImpl>
 vme::timeout_error
-master<MasterImpl>::timeout_error(const std::string &msg) const {
+master<MasterImpl>::timeout_error(const std::string& msg) const {
   return error_helper<vme::timeout_error>(msg);
 }
 }

@@ -106,72 +106,72 @@ template <addressing_mode A> struct address_spec {};
 // A16
 template <> struct address_spec<addressing_mode::A16> {
   using ptr_type = uint16_t;
-  static constexpr uint32_t LCK{ 0x2C };    // A16 lock command
-  static constexpr uint32_t DATA{ 0x29 };   // A16 (non-priv.) access
-  static constexpr uint32_t DATA_S{ 0x2D }; // [obsolete] A16 (super.) access
+  static constexpr uint32_t LCK{0x2C};    // A16 lock command
+  static constexpr uint32_t DATA{0x29};   // A16 (non-priv.) access
+  static constexpr uint32_t DATA_S{0x2D}; // [obsolete] A16 (super.) access
 };
 // A24
 template <> struct address_spec<addressing_mode::A24> {
   using ptr_type = uint32_t;
-  static constexpr uint32_t LCK{ 0x35 };    // A24 lock command
-  static constexpr uint32_t DATA{ 0x39 };   // A24 (non-priv.) data access
-  static constexpr uint32_t BLT{ 0x3B };    // A24 (non-priv.) BLT
-  static constexpr uint32_t MBLT{ 0x38 };   // A24 (non-priv.) MBLT
-  static constexpr uint32_t PROG{ 0x3A };   // A24 (non-priv.) prog. access
-  static constexpr uint32_t DATA_S{ 0x3D }; // [obsolete] A24 (super.) data
-                                            // access
-  static constexpr uint32_t BLT_S{ 0x3F };  // [obsolete] A24 (super.) BLT
-  static constexpr uint32_t MBLT_S{ 0x3C }; // [obsolete] A24 (super.) MBLT
-  static constexpr uint32_t PROG_S{ 0x3E }; // [obsolete] A24 (super.) prog.
-                                            // access
-  static constexpr uint32_t CS_CSR{ 0x2F }; // 24-bit control/status register
-                                            // space
+  static constexpr uint32_t LCK{0x35};    // A24 lock command
+  static constexpr uint32_t DATA{0x39};   // A24 (non-priv.) data access
+  static constexpr uint32_t BLT{0x3B};    // A24 (non-priv.) BLT
+  static constexpr uint32_t MBLT{0x38};   // A24 (non-priv.) MBLT
+  static constexpr uint32_t PROG{0x3A};   // A24 (non-priv.) prog. access
+  static constexpr uint32_t DATA_S{0x3D}; // [obsolete] A24 (super.) data
+                                          // access
+  static constexpr uint32_t BLT_S{0x3F};  // [obsolete] A24 (super.) BLT
+  static constexpr uint32_t MBLT_S{0x3C}; // [obsolete] A24 (super.) MBLT
+  static constexpr uint32_t PROG_S{0x3E}; // [obsolete] A24 (super.) prog.
+                                          // access
+  static constexpr uint32_t CS_CSR{0x2F}; // 24-bit control/status register
+                                          // space
 };
 // A32
 template <> struct address_spec<addressing_mode::A32> {
   using ptr_type = uint32_t;
-  static constexpr uint32_t LCK{ 0x05 };      // A32 lock_command
-  static constexpr uint32_t DATA{ 0x09 };     // A32 (non-priv.) data access
-  static constexpr uint32_t BLT{ 0x0B };      // A32 (non-priv.) BLT
-  static constexpr uint32_t MBLT{ 0x08 };     // A32 (non-priv.) MBLT
-  static constexpr uint32_t PROG{ 0x0A };     // A32 (non-priv.) prog. access
-  static constexpr uint32_t DATA_S{ 0x0D };   // [obsolete] A32 (super.) data
-                                              // access
-  static constexpr uint32_t BLT_S{ 0x0F };    // [obsolete] A32 (super.) BLT
-  static constexpr uint32_t MBLT_S{ 0x0C };   // [obsolete] A32 (super.) MBLT
-  static constexpr uint32_t PROG_S{ 0x0E };   // [obsolete] A32 (super.) prog.
-                                              // access
-  static constexpr uint32_t U3_2eVME{ 0x21 }; // 2eVME for 3U bus modules
-  static constexpr uint32_t U6_2eVME{ 0x20 }; // 2eVME for 6U bus modules
+  static constexpr uint32_t LCK{0x05};      // A32 lock_command
+  static constexpr uint32_t DATA{0x09};     // A32 (non-priv.) data access
+  static constexpr uint32_t BLT{0x0B};      // A32 (non-priv.) BLT
+  static constexpr uint32_t MBLT{0x08};     // A32 (non-priv.) MBLT
+  static constexpr uint32_t PROG{0x0A};     // A32 (non-priv.) prog. access
+  static constexpr uint32_t DATA_S{0x0D};   // [obsolete] A32 (super.) data
+                                            // access
+  static constexpr uint32_t BLT_S{0x0F};    // [obsolete] A32 (super.) BLT
+  static constexpr uint32_t MBLT_S{0x0C};   // [obsolete] A32 (super.) MBLT
+  static constexpr uint32_t PROG_S{0x0E};   // [obsolete] A32 (super.) prog.
+                                            // access
+  static constexpr uint32_t U3_2eVME{0x21}; // 2eVME for 3U bus modules
+  static constexpr uint32_t U6_2eVME{0x20}; // 2eVME for 6U bus modules
   // static constexpr uint32_t XAM_U3 = TODO lookup value
-  static constexpr uint32_t XAM_6U{ 0x01 }; // A32 for 2eVME(6U)
+  static constexpr uint32_t XAM_6U{0x01}; // A32 for 2eVME(6U)
 };
 // A40
 template <> struct address_spec<addressing_mode::A40> {
   using ptr_type = uint64_t;
-  static constexpr uint32_t LCK{ 0x35 };      // A40 lock command
-  static constexpr uint32_t DATA{ 0x34 };     // A40 access
-  static constexpr uint32_t MD32{ 0x37 };     // A40 MD32
-  static constexpr uint32_t U3_2eVME{ 0x21 }; // 2eVME for 3U bus modules
+  static constexpr uint32_t LCK{0x35};      // A40 lock command
+  static constexpr uint32_t DATA{0x34};     // A40 access
+  static constexpr uint32_t MD32{0x37};     // A40 MD32
+  static constexpr uint32_t U3_2eVME{0x21}; // 2eVME for 3U bus modules
   // static constexpr uint32_t XAM_3U = TODO lookup value
 };
 // A64
 template <> struct address_spec<addressing_mode::A64> {
   using ptr_type = uint64_t;
-  static constexpr uint32_t LCK{ 0x04 };      // A64 lock command
-  static constexpr uint32_t DATA{ 0x01 };     // A64 data access
-  static constexpr uint32_t BLT{ 0x03 };      // A64 BLT
-  static constexpr uint32_t MBLT{ 0x00 };     // A64 MBLT
-  static constexpr uint32_t U6_2eVME{ 0x20 }; // 2eVME for 6U bus modules
-  static constexpr uint32_t XAM_6U{ 0x02 };   // A64 for 2eVME(6U)
+  static constexpr uint32_t LCK{0x04};      // A64 lock command
+  static constexpr uint32_t DATA{0x01};     // A64 data access
+  static constexpr uint32_t BLT{0x03};      // A64 BLT
+  static constexpr uint32_t MBLT{0x00};     // A64 MBLT
+  static constexpr uint32_t U6_2eVME{0x20}; // 2eVME for 6U bus modules
+  static constexpr uint32_t XAM_6U{0x02};   // A64 for 2eVME(6U)
 };
 
 namespace transfer_spec_impl {
 template <class IntegerType, size_t BlockLength /* in bytes */> struct data {
   using value_type = IntegerType;
-  using ptr_type = value_type *;
-  static constexpr size_t WIDTH{ sizeof(value_type) };
-  static constexpr size_t BLOCK_LENGTH{ BlockLength / sizeof(value_type) };
+  using ptr_type = value_type*;
+  static constexpr size_t WIDTH{sizeof(value_type)};
+  static constexpr size_t BLOCK_LENGTH{BlockLength / sizeof(value_type)};
 };
 }
 
@@ -180,7 +180,7 @@ template <addressing_mode A> struct split_register {
   const address_type LSB;
   const address_type MSB;
   constexpr split_register(address_type lower, address_type upper)
-      : LSB{ lower }, MSB{ upper } {}
+      : LSB{lower}, MSB{upper} {}
 };
 
 // transfer mode specification (VME64/VME64x)
@@ -190,43 +190,42 @@ template <addressing_mode A> struct split_register {
 template <transfer_mode D> struct transfer_spec {};
 // D08_O
 template <>
-struct transfer_spec<transfer_mode::D08_O> : transfer_spec_impl::data<int8_t,
-                                                                      256> {};
+struct transfer_spec<transfer_mode::D08_O>
+    : transfer_spec_impl::data<int8_t, 256> {};
 // D08_EO
 template <>
-struct transfer_spec<transfer_mode::D08_EO> : transfer_spec_impl::data<int8_t,
-                                                                       256> {};
+struct transfer_spec<transfer_mode::D08_EO>
+    : transfer_spec_impl::data<int8_t, 256> {};
 // D16
 template <>
-struct transfer_spec<transfer_mode::D16> : transfer_spec_impl::data<int16_t,
-                                                                    256> {};
+struct transfer_spec<transfer_mode::D16>
+    : transfer_spec_impl::data<int16_t, 256> {};
 // D32
 template <>
-struct transfer_spec<transfer_mode::D32> : transfer_spec_impl::data<int32_t,
-                                                                    256> {};
+struct transfer_spec<transfer_mode::D32>
+    : transfer_spec_impl::data<int32_t, 256> {};
 // MD32
 template <>
-struct transfer_spec<transfer_mode::MD32> : transfer_spec_impl::data<int32_t,
-                                                                     256> {};
+struct transfer_spec<transfer_mode::MD32>
+    : transfer_spec_impl::data<int32_t, 256> {};
 // MBLT
 // NOTE: MBLT block length reduced from the 2048 from the spec
 //       because the CAEN VX1718 starts huccuping when reading more
 //       than 96 64-bit words (even though in theory it should be able
 //       to split the blocks in hardware...)
 template <>
-struct transfer_spec<transfer_mode::MBLT> : transfer_spec_impl::data<
-                                                int64_t, 96 * sizeof(int64_t)> {
-};
+struct transfer_spec<transfer_mode::MBLT>
+    : transfer_spec_impl::data<int64_t, 96 * sizeof(int64_t)> {};
 //                : transfer_spec_impl::data<int64_t, 2048> {};
 // U3_2eVME
 // TODO update when implemented!
 template <>
-struct transfer_spec<transfer_mode::U3_2eVME> : transfer_spec_impl::data<
-                                                    uint32_t, 0> {};
+struct transfer_spec<transfer_mode::U3_2eVME>
+    : transfer_spec_impl::data<uint32_t, 0> {};
 // U6_2eVME
 template <>
-struct transfer_spec<transfer_mode::U6_2eVME> : transfer_spec_impl::data<
-                                                    int64_t, 2048> {};
+struct transfer_spec<transfer_mode::U6_2eVME>
+    : transfer_spec_impl::data<int64_t, 2048> {};
 }
 }
 
@@ -240,19 +239,19 @@ namespace vme {
 // types of block transfer modifiers
 namespace am_impl {
 template <addressing_mode A, transfer_mode D> struct block_mode {
-  static constexpr uint32_t value{ address_spec<A>::BLT };
+  static constexpr uint32_t value{address_spec<A>::BLT};
 };
 template <addressing_mode A> struct block_mode<A, transfer_mode::MD32> {
-  static constexpr uint32_t value{ address_spec<A>::MD32 };
+  static constexpr uint32_t value{address_spec<A>::MD32};
 };
 template <addressing_mode A> struct block_mode<A, transfer_mode::MBLT> {
-  static constexpr uint32_t value{ address_spec<A>::MBLT };
+  static constexpr uint32_t value{address_spec<A>::MBLT};
 };
 template <addressing_mode A> struct block_mode<A, transfer_mode::U3_2eVME> {
-  static constexpr uint32_t value{ address_spec<A>::U3_2eVME };
+  static constexpr uint32_t value{address_spec<A>::U3_2eVME};
 };
 template <addressing_mode A> struct block_mode<A, transfer_mode::U6_2eVME> {
-  static constexpr uint32_t value{ address_spec<A>::U6_2eVME };
+  static constexpr uint32_t value{address_spec<A>::U6_2eVME};
 };
 };
 template <addressing_mode A, transfer_mode D>
@@ -264,13 +263,13 @@ constexpr uint32_t deduce_block_modifier() {
 namespace xam_impl {
 template <addressing_mode A, transfer_mode D> struct xam_code {
   // dummy default value the VME64 transfers
-  static constexpr uint32_t value{ 0 };
+  static constexpr uint32_t value{0};
 };
 template <addressing_mode A> struct xam_code<A, transfer_mode::U3_2eVME> {
-  static constexpr uint32_t value{ address_spec<A>::XAM_3U };
+  static constexpr uint32_t value{address_spec<A>::XAM_3U};
 };
 template <addressing_mode A> struct xam_code<A, transfer_mode::U6_2eVME> {
-  static constexpr uint32_t value{ address_spec<A>::XAM_6U };
+  static constexpr uint32_t value{address_spec<A>::XAM_6U};
 };
 }
 template <addressing_mode A, transfer_mode D> constexpr uint32_t xam_code() {

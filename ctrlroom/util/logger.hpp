@@ -27,14 +27,14 @@ enum class log_level : unsigned {
   JUNK = 6,
   JUNK2 = 7
 };
-constexpr std::array<const char *, 8> LOG_LEVEL_NAMES{
-  "nothing", "critical", "error", "warning", "info", "debug", "junk", "junk2"
-};
+constexpr std::array<const char*, 8> LOG_LEVEL_NAMES{
+    "nothing", "critical", "error", "warning",
+    "info",    "debug",    "junk",  "junk2"};
 
 // global logger function
 template <log_level level>
-void log(const std::string &mtitle, const std::string &mtext,
-         log_handler &logger = global::logger);
+void log(const std::string& mtitle, const std::string& mtext,
+         log_handler& logger = global::logger);
 }
 
 // PREPROCESSOR macros to actually call the logger.
@@ -85,19 +85,19 @@ private:
 
 public:
   log_handler(const log_level level = log_level::INFO,
-              std::ostream &sink = std::cout);
+              std::ostream& sink = std::cout);
 
   log_level level() const {
-    lock_type lock{ mutex_ };
+    lock_type lock{mutex_};
     return level_;
   }
 
   void set_level(const log_level level);
   void set_level(unsigned ulevel);
 
-  void operator()(const log_level mlevel, const std::string &mtitle,
-                  const std::string &mtext) {
-    lock_type lock{ mutex_ };
+  void operator()(const log_level mlevel, const std::string& mtitle,
+                  const std::string& mtext) {
+    lock_type lock{mutex_};
     if (mlevel > level_)
       return;
     time_t rt;
@@ -109,13 +109,13 @@ public:
 
 private:
   log_level level_;
-  std::ostream &sink_;
+  std::ostream& sink_;
   mutable mutex_type mutex_;
 };
 
 template <log_level level>
-void log(const std::string &mtitle, const std::string &mtext,
-         log_handler &logger) {
+void log(const std::string& mtitle, const std::string& mtext,
+         log_handler& logger) {
   logger(level, mtitle, mtext);
 }
 }
