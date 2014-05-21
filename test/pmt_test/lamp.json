@@ -1,0 +1,89 @@
+{
+  "experiment": {
+    "name": "lamp",
+    "path": {
+      "calibration": "/daq/pmt_coat/calibrations/2014-05-21",
+      "output": "/daq/pmt_coat/prod/pre/batch00002/lamp"
+    },
+    "signal": {
+      "nPulses": 50
+    },
+    "integral": {
+      "nPulses": 50000,
+      "range": [600, 1500],
+      "histo": {
+        "range": [-100, 100],
+        "nBins": 750,
+        "fit": "gaus"
+      }
+    },
+    "PMT": {
+      "center": {
+        "ID": "T1591-B410036",
+        "HV": 1600,
+        "histo": {
+          "range": [150000, 2250000]
+        }
+      },
+      "left": {
+        "ID": "T1605-B412060",
+        "HV": 1600,
+        "histo": {
+          "range": [50000, 750000]
+        }
+      },
+      "right": {
+        "ID": "T1545-B412029",
+        "HV": 1600,
+        "histo": {
+          "range": [50000, 750000]
+        }
+      },
+      "witness": {
+        "ID": "sane_07",
+        "HV": 1600,
+        "histo": {
+          "range": [1000000, 3000000]
+        }
+      }
+    },
+    "environment": {
+      "humidity [%]": "42.",
+      "temperature [C]": "23.7"
+    }
+  },
+  "bridge": {
+    "model": "CAEN_VX2718",
+    "linkIndex": 0,
+    "boardIndex": 0,
+    "IRQ": ["IRQ3"]
+  },
+  "ADC": {
+    "address": "0x30010000",
+    "model": "CAEN_V1729a",
+    "triggerType": "external",
+    "triggerSettings": ["falling"],
+    "triggerThreshold": "-200",
+    "preTrig": 10240,
+    "postTrig": 500,
+    "samplingFrequency": "2GHz",
+    "IRQ": "IRQ3",
+    "channel": [
+      "witness", 
+      "center", 
+      "left", 
+      "right"
+    ]
+  },
+  "defaults": {
+    "CAEN_VX2718": {
+      "timeout": 5000
+    },
+    "CAEN_V1729a": {
+      "triggerType": "internal",
+      "triggerSettings": ["falling"],
+      "preTrig": 10240,
+      "samplingFrequency": "2GHz"
+    }
+  }
+}

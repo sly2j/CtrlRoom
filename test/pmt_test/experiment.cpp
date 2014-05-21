@@ -50,17 +50,21 @@ public:
   // config file keys
   static constexpr const char* EXPERIMENT_KEY{"experiment"};
   static constexpr const char* NAME_KEY{"name"};
+
   static constexpr const char* CALIBRATION_KEY{"path.calibration"};
   static constexpr const char* OUTDIR_KEY{"path.output"};
-  static constexpr const char* N_PULSES_KEY{"signal.nPulses"};
-  static constexpr const char* N_INTEGRALS_KEY{"integral.nPulses"};
-  static constexpr const char* INTEGRATION_RANGE_KEY{"integral.range"};
-  static constexpr const char* HISTO_KEY{"integral.histo"};
-  static constexpr const char* HISTO_RANGE_KEY{"range"};
-  static constexpr const char* HISTO_NBINS_KEY{"nBins"};
-  static constexpr const char* HISTO_FIT_KEY{"fit"};
+    
+  static constexpr const char* SIGNAL_PATH{"signal."};
+  static constexpr const char* INTEGRAL_PATH{"integral."};
+  static constexpr const char* PMT_PATH{"PMT."};
+
+  static constexpr const char* N_PULSES_KEY{"nPulses"};
+  static constexpr const char* RANGE_KEY {"range"};
+  static constexpr const char* HISTO_KEY{"histo"};
+  static constexpr const char* NBINS_KEY {"nBins"};
+  static constexpr const char* FIT_KEY{"fit"};
   static constexpr const char* CHANNEL_KEY{"channel"};
-  static constexpr const char* PMT_KEY{"PMT"};
+  static constexpr const char* ID_KEY{"ID"};
 
   // constants
   static constexpr const char* MASTER_NAME{"bridge"};
@@ -83,9 +87,11 @@ public:
       , plots_fname_{make_filename(conf_.get<std::string>(OUTDIR_KEY),
                                    OUTPUT_PLOTS_FNAME)}
       , name_{conf_.get<std::string>(NAME_KEY)}
-      , n_pulses_{conf_.get<size_t>(N_PULSES_KEY)}
-      , n_integrals_{conf_.get<size_t>(N_INTEGRALS_KEY)}
-      , integration_range_{get_range<size_t>(INTEGRATION_RANGE_KEY)} {
+      , n_pulses_{conf_.get<size_t>(std::string(SIGNAL_PATH) + N_PULSES_KEY)}
+      , n_integrals_{
+            conf_.get<size_t>(std::string(INTEGRAL_PATH) + N_PULSES_KEY)}
+      , integration_range_{
+            get_range<size_t>(std::string(INTEGRAL_PATH) + RANGE_KEY)} {
 
     init_histos();
 
@@ -200,21 +206,21 @@ private:
   }
 
   void init_histo_names() {
-    auto position_vec = adc_.conf().get_vector<std::string>(CHANNEL_KEY);
-    if (position_vec.size() != 4) {
-      throw conf_.value_error(CHANNEL_KEY, stringify(position_vec));
+    auto position = adc_.conf().get_vector<std::string>(CHANNEL_KEY);
+    if (position.size() != 4) {
+      throw conf_.value_error(CHANNEL_KEY, stringify(position));
     }
     for (size_t i = 0; i < 4; ++i) {
-      position_names_[i] = position_vec[i];
-      channel_names_[i] = "channel" + std::to_string(i);
+      position_names_[i] = position[i];
+      channel_names_[i] = "channel " + std::to_string(i);
       PMT_names_[i] = channel_names_[i];
-      if (position_vec[i] == "none") {
+      if (position[i] == "none") {
         PMT_names_[i] = "none";
       } else {
-        auto name = conf_.get_optional<std::string>(std::string(PMT_KEY) +
-                                                    "." + position_vec[i]);
+        auto name = conf_.get_optional<std::string>(
+            std::string(PMT_PATH) + position[i] + "." + ID_KEY);
         if (name) {
-          PMT_names_[i] = *name + " (" + position_vec[i] + ")";
+          PMT_names_[i] = *name + " (" + position[i] + ")";
         }
       }
     }
@@ -222,32 +228,49 @@ private:
   void init_histos() {
     init_histo_names();
 
+    const std::string def_path {std::string(INTEGRAL_PATH) + HISTO_KEY + "."};
     for (size_t i = 0; i < 4; ++i) {
-      std::string path {HISTO_KEY};
-      if (position_names_[i] == "none") {
-        path += ".default.";
+      const std::string path{PMT_PATH + position_names_[i] + "." + HISTO_KEY +
+                             "."};
+      auto nbins = conf_.get_optional<size_t>(path + NBINS_KEY);
+      if (nbins) {
+        histo_nbins_[i] = *nbins;
       } else {
-        auto has_own_config = conf_.get_optional<size_t>(
-            path + "." + position_names_[i] + "." + HISTO_NBINS_KEY);
-        if (has_own_config) {
-          path += "." + position_names_[i] + ".";
-        } else {
-          path += ".default.";
-        }
+        histo_nbins_[i] = conf_.get<size_t>(def_path + NBINS_KEY);
       }
-      histo_nbins_[i] = conf_.get<size_t>(path + HISTO_NBINS_KEY);
-      histo_ranges_[i] = get_range<int>(path + HISTO_RANGE_KEY);
-      histo_fit_[i] = conf_.get<std::string>(path + HISTO_FIT_KEY);
+      auto range = get_optional_range<int>(path + RANGE_KEY);
+      if (range) {
+        histo_ranges_[i] = *range;
+      } else {
+        histo_ranges_[i] = get_range<int>(def_path + RANGE_KEY);
+      }
+      auto fit = conf_.get_optional<std::string>(path + FIT_KEY);
+      if (fit) {
+        histo_fit_[i] = *fit;
+      } else {
+        histo_fit_[i] = conf_.get<std::string>(def_path + FIT_KEY);
+      }
     }
   }
 
   template <class T>
-  std::pair<T, T> get_range(const std::string& key) {
-    auto range = conf_.get_vector<T>(key);
-    if (range.size() != 2) {
-      throw conf_.translation_error(key, stringify(range));
+  optional<std::pair<T, T>> get_optional_range(const std::string& key) {
+    auto range = conf_.get_optional_vector<T>(key);
+    if (range) {
+      if (range->size() != 2) {
+        throw conf_.translation_error(key, stringify(*range));
+      }
+      return {{(*range)[0], (*range)[1]}};
     }
-    return {range[0], range[1]};
+    return {};
+  }
+  template <class T>
+  std::pair<T, T> get_range(const std::string& key) {
+    auto range = get_optional_range<T>(key);
+    if (!range) {
+      throw conf_.key_error(key);
+    }
+    return *range;
   }
 
   configuration conf_;
