@@ -1,4 +1,4 @@
 CtrlRoom
 ========
 
-Modulare DAQ API and control interface written in C++11
+Modulare DAQ API and control interface written in C++11.
