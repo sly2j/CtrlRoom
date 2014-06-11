@@ -89,11 +89,10 @@ public:
       , name_{conf_.get<std::string>(NAME_KEY)}
       , n_pulses_{conf_.get<size_t>(std::string(SIGNAL_PATH) + N_PULSES_KEY)}
       , n_integrals_{
-            conf_.get<size_t>(std::string(INTEGRAL_PATH) + N_PULSES_KEY)}
-      , integration_range_{
-            get_range<size_t>(std::string(INTEGRAL_PATH) + RANGE_KEY)} {
+            conf_.get<size_t>(std::string(INTEGRAL_PATH) + N_PULSES_KEY)} {
 
     init_histos();
+    init_integration();
 
     LOG_INFO(name_, "Experiment initialized");
 
@@ -183,7 +182,7 @@ private:
       master_->wait_for_irq();
       adc_.read_pulse(buf);
       for (unsigned k{0}; k < 4; ++k) {
-        channel[k] = -buf.integrate(k, integration_range_);
+        channel[k] = -buf.integrate(k, integration_ranges_[k]);
         histos[k]->Fill(channel[k]);
       }
       t.Fill();
@@ -253,6 +252,19 @@ private:
     }
   }
 
+  void init_integration() {
+    const std::string def_path {std::string(INTEGRAL_PATH) + RANGE_KEY};
+    for (size_t i = 0; i < 4; ++i) {
+      const std::string path{PMT_PATH + position_names_[i] + "." + RANGE_KEY};
+      auto range = get_optional_range<size_t>(path);
+      if (range) {
+        integration_ranges_[i] = *range;
+      } else {
+        integration_ranges_[i] = get_range<size_t>(def_path);
+      }
+    }
+  }
+
   template <class T>
   optional<std::pair<T, T>> get_optional_range(const std::string& key) {
     auto range = conf_.get_optional_vector<T>(key);
@@ -286,7 +298,7 @@ private:
   const size_t n_pulses_;
   const size_t n_integrals_;
 
-  const std::pair<size_t, size_t> integration_range_;
+  std::array<std::pair<size_t, size_t>, 4> integration_ranges_;
 
   std::array<std::pair<int, int>, 4> histo_ranges_;
   std::array<size_t, 4> histo_nbins_;
