@@ -48,7 +48,7 @@ public:
   void save(ptree& out_conf) const;
 
   // get the model info
-  const std::string& model() const { return model_key_; }
+  std::string model() const { return get<std::string>(model_key_); }
 
   // Three pairs of functions to get a setting by its key.
   //

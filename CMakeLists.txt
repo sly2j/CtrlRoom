@@ -2,6 +2,8 @@
 
 cmake_minimum_required (VERSION 2.6)
 project (ctrlroom)
+set (VERSION "1")
+set (SOVERSION "1.0")
 
 ## make sure that the default is RELEASE
 if (NOT CMAKE_BUILD_TYPE)
@@ -13,12 +15,6 @@ endif (NOT CMAKE_BUILD_TYPE)
 ## extra cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} 
     "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-
-# default installation
-get_filename_component (default_prefix "/usr/local" ABSOLUTE)
-set (CMAKE_INSTALL_PREFIX ${default_prefix} CACHE STRING
-      "Choose the installation directory; by default it installs in the NORMA directory."
-      FORCE)
 
 # CXX FLAGS (currently only supports gcc (>=4.8) and clang)
 # -O1 for debug to take care of a problem with constexpr in gcc
@@ -50,13 +46,21 @@ add_definitions(${CAENVME_DEFINITIONS})
 add_subdirectory(ctrlroom/util)
 add_subdirectory(ctrlroom/vme)
 
-#IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     # do nothing
-    #ELSE ()
+ELSE ()
     add_subdirectory(test)
-    #ENDIF ()
+ENDIF ()
 
-add_library(ctrlroom SHARED ctrlroom/board.cpp)
+file (GLOB CTRLROOM_SOURCES ctrlroom/*.c*)
+file (GLOB CTRLROOM_HEADERS ctrlroom/*.h*)
+
+add_library(ctrlroom SHARED ${CTRLROOM_SOURCES})
 target_link_libraries(ctrlroom util vme
                       ${Boost_LIBRARIES}
                       ${CAENVME_LIBRARIES})
+
+set_target_properties(ctrlroom PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
+
+install (FILES ${CTRLROOM_HEADERS} DESTINATION include/ctrlroom)
+install (TARGETS ctrlroom DESTINATION lib)
