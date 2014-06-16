@@ -98,6 +98,19 @@ public:
   template <class T> T get_bitpattern(const std::string& key) const;
   template <class T>
   T get_bitpattern(const std::string& key, const translation_map<T>& tr) const;
+  // special version to get a std::pair from a "range" vector
+  // 1. optional versions
+  template <class T>
+  optional<std::pair<T, T>> get_optional_range(const std::string& key) const;
+  template <class T>
+  optional<std::pair<T, T>>
+  get_optional_range(const std::string& key,
+                     const translation_map<T>& tr) const;
+  // 2. throwing versions
+  template <class T> std::pair<T, T> get_range(const std::string& key) const;
+  template <class T>
+  std::pair<T, T> get_range(const std::string& key,
+                            const translation_map<T>& tr) const;
 
   // Helper functions to construct exceptions
   configuration_path_error path_error(const std::string& path) const;
@@ -315,7 +328,52 @@ T configuration::get_bitpattern(const std::string& key,
   }
   return *s;
 }
-// configuration_translation_error<T> impl
+// and "range" (pair) version
+template <class T>
+optional<std::pair<T, T>>
+configuration::get_optional_range(const std::string& key) const
+{
+  auto range = get_optional_vector<T>(key);
+  if (range) {
+    if(range->size() != 2) {
+      throw translation_error(key, stringify(*range));
+    }
+    return {{(*range)[0], (*range)[1]}};
+  }
+  return {};
+}
+template <class T>
+optional<std::pair<T, T>>
+configuration::get_optional_range(const std::string& key,
+                                  const translation_map<T>& tr) const {
+  auto range = get_optional_vector(key, tr);
+  if (range) {
+    if (range->size() != 2) {
+      throw translation_error(key, stringify(*range));
+    }
+    return {{(*range)[0], (*range)[1]}};
+  }
+  return {};
+}
+template <class T>
+std::pair<T, T> configuration::get_range(const std::string& key) const {
+  auto range = get_optional_range<T>(key);
+  if (!range) {
+    throw key_error(key);
+  }
+  return *range;
+}
+template <class T>
+std::pair<T, T> configuration::get_range(const std::string& key,
+                                         const translation_map<T>& tr) const {
+  auto range = get_optional_range(key, tr);
+  if (!range) {
+    throw key_error(key);
+  }
+  return *range;
+}
+
+    // configuration_translation_error<T> impl
 template <class T>
 configuration_translation_error
 configuration::translation_error(const std::string& key,
