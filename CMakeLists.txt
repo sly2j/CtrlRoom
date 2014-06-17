@@ -43,24 +43,27 @@ include_directories(${PROJECT_SOURCE_DIR}
 # defines
 add_definitions(${CAENVME_DEFINITIONS})
 
-add_subdirectory(ctrlroom/util)
-add_subdirectory(ctrlroom/vme)
-
 IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     # do nothing
 ELSE ()
-    add_subdirectory(test)
+  add_subdirectory(test)
 ENDIF ()
 
-file (GLOB CTRLROOM_SOURCES ctrlroom/*.c*)
-file (GLOB CTRLROOM_HEADERS ctrlroom/*.h*)
+file (GLOB SOURCES ctrlroom/*.cpp 
+                   ctrlroom/vme/*.cpp ctrlroom/vme/*/*.cpp
+                   ctrlroom/util/*.cpp ctrlroom/util/*/*.cpp)
+file (GLOB HEADERS ctrlroom/*.hpp)
 
-add_library(ctrlroom SHARED ${CTRLROOM_SOURCES})
-target_link_libraries(ctrlroom util vme
+# extra install instructions (only headers)
+add_subdirectory(ctrlroom/util)
+add_subdirectory(ctrlroom/vme)
+
+add_library(ctrlroom SHARED ${SOURCES})
+target_link_libraries(ctrlroom 
                       ${Boost_LIBRARIES}
                       ${CAENVME_LIBRARIES})
 
 set_target_properties(ctrlroom PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
 
-install (FILES ${CTRLROOM_HEADERS} DESTINATION include/ctrlroom)
+install (FILES ${HEADERS} DESTINATION include/ctrlroom)
 install (TARGETS ctrlroom DESTINATION lib)
