@@ -1,6 +1,8 @@
 #include "io.hpp"
 #include <boost/filesystem.hpp>
 
+#include <ctrlroom/util/logger.hpp>
+
 namespace ctrlroom {
 //////////////////////////////////////////////////////////////////////////////////////////
 // make_filename
@@ -8,7 +10,7 @@ namespace ctrlroom {
 std::string make_filename(const std::string& dir, const std::string& base,
                           const std::string& extra) {
   std::string ret{dir};
-  if (dir.back() != '/') {
+  if (!dir.empty() && dir.back() != '/') {
     ret += "/";
   }
   ret += base;
@@ -36,6 +38,7 @@ io_write_error::io_write_error(const std::string& msg, const std::string& type)
 output_directory::output_directory(const std::string& path_name, bool force_new)
     : path{path_name} {
   if (!boost::filesystem::exists(path)) {
+    LOG_INFO("I/O", "Creating output directory '" + path + "'");
     boost::filesystem::create_directories(path);
   } else if (force_new) {
     throw io_write_error{"Failed to create directory '" + path + "'."};
