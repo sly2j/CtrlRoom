@@ -31,13 +31,13 @@ struct output_directory {
   output_directory(const configuration& conf, const std::string& key,
                    bool force_new = true);
   output_directory(const std::string& path_name, bool force_new = true);
-  const std::string& path;
+  const std::string path;
 };
 // input directory proxy, throws exception if the directory does not exist
 struct input_directory {
   input_directory(const configuration& conf, const std::string& key);
   input_directory(const std::string& path_name);
-  const std::string& path;
+  const std::string path;
 };
 
 } // namespace ctrlroom
