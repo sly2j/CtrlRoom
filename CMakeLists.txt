@@ -49,21 +49,48 @@ ELSE ()
   add_subdirectory(test)
 ENDIF ()
 
-file (GLOB SOURCES ctrlroom/*.cpp 
-                   ctrlroom/vme/*.cpp ctrlroom/vme/*/*.cpp
-                   ctrlroom/util/*.cpp ctrlroom/util/*/*.cpp)
-file (GLOB HEADERS ctrlroom/*.hpp)
+# Sources and headers
+set (SOURCES "ctrlroom/vme/caen_v1729.cpp"
+              "ctrlroom/vme/caen_bridge.cpp"
+              "ctrlroom/vme/master.cpp"
+              "ctrlroom/vme/caen_v1729/spec.cpp"
+              "ctrlroom/util/io.cpp"
+              "ctrlroom/util/logger.cpp"
+              "ctrlroom/util/configuration.cpp"
+              "ctrlroom/util/io/array.cpp"
+              "ctrlroom/board.cpp")
+set (HEADERS "ctrlroom/vme/master/block_transfer.hpp"
+              "ctrlroom/vme/slave.hpp"
+              "ctrlroom/vme/master.hpp"
+              "ctrlroom/vme/caen_bridge.hpp"
+              "ctrlroom/vme/caen_v1729.hpp"
+              "ctrlroom/vme/caen_v1729/channel_index.hpp"
+              "ctrlroom/vme/caen_v1729/spec.hpp"
+              "ctrlroom/vme/vme64.hpp"
+              "ctrlroom/util/root.hpp"
+              "ctrlroom/util/stringify.hpp"
+              "ctrlroom/util/assert.hpp"
+              "ctrlroom/util/type_traits.hpp"
+              "ctrlroom/util/io/array.hpp"
+              "ctrlroom/util/mixin.hpp"
+              "ctrlroom/util/configuration.hpp"
+              "ctrlroom/util/exception.hpp"
+              "ctrlroom/util/logger.hpp"
+              "ctrlroom/util/io.hpp"
+              "ctrlroom/board.hpp")
 
-# extra install instructions (only headers)
-add_subdirectory(ctrlroom/util)
-add_subdirectory(ctrlroom/vme)
-
-add_library(ctrlroom SHARED ${SOURCES})
+# COMPILE shared library 
+add_library(ctrlroom SHARED ${SOURCES} ${HEADERS})
 target_link_libraries(ctrlroom 
                       ${Boost_LIBRARIES}
                       ${CAENVME_LIBRARIES})
-
 set_target_properties(ctrlroom PROPERTIES VERSION ${VERSION} SOVERSION ${SOVERSION})
 
-install (FILES ${HEADERS} DESTINATION include/ctrlroom)
+# INSTALL instructions
+# 1. install all headers
+FOREACH (header ${HEADERS})
+  GET_FILENAME_COMPONENT(header_path ${header} PATH)
+  install (FILES ${header} DESTINATION include/${header_path})
+ENDFOREACH()
+# 2. install the shared library
 install (TARGETS ctrlroom DESTINATION lib)
