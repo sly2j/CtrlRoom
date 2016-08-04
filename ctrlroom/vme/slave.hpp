@@ -17,7 +17,7 @@ namespace ctrlroom {
 namespace vme {
 
 template <class Master, addressing_mode A, transfer_mode DSingle,
-          transfer_mode DBLT>
+          transfer_mode DBLT = transfer_mode::DISABLED>
 class slave : public board {
 public:
   constexpr static const char* ADDRESS_KEY{"address"};

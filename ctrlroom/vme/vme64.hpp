@@ -28,6 +28,7 @@ enum class addressing_mode {
 
 // data transfer modes (VME64/VME64x standard)
 enum class transfer_mode {
+  DISABLED, // transfer mode disabled
   D08_O,    // (slave only) 8-bit transfer at odd addresses
   D08_EO,   // 8-bit transfer
   D16,      // 16-bit transfer

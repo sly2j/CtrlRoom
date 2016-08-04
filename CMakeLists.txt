@@ -1,20 +1,22 @@
-# CMake project file for CtrlRoom v0.1
+# CMake project file for CtrlRoom v1.1
 
 ################################################################################
 # PROJECT: CtrlRoom
 ################################################################################
 cmake_minimum_required (VERSION 2.6)
 project (CtrlRoom)
-set (VERSION "1")
-set (SOVERSION "1.0")
+set (VERSION "1.1")
+set (SOVERSION "1.1")
 
 ################################################################################
 # Sources and headers
 ################################################################################
 set (SOURCES "ctrlroom/vme/caen_v1729.cpp"
+             "ctrlroom/vme/caen_discriminator.cpp"
              "ctrlroom/vme/caen_bridge.cpp"
              "ctrlroom/vme/master.cpp"
              "ctrlroom/vme/caen_v1729/spec.cpp"
+             "ctrlroom/vme/caen_discriminator/spec.cpp"
              "ctrlroom/util/io.cpp"
              "ctrlroom/util/logger.cpp"
              "ctrlroom/util/configuration.cpp"
@@ -24,6 +26,8 @@ set (HEADERS "ctrlroom/vme/master/block_transfer.hpp"
              "ctrlroom/vme/slave.hpp"
              "ctrlroom/vme/master.hpp"
              "ctrlroom/vme/caen_bridge.hpp"
+             "ctrlroom/vme/caen_discriminator.hpp"
+             "ctrlroom/vme/caen_discriminator/spec.hpp"
              "ctrlroom/vme/caen_v1729.hpp"
              "ctrlroom/vme/caen_v1729/channel_index.hpp"
              "ctrlroom/vme/caen_v1729/spec.hpp"
