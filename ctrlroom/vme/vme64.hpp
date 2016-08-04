@@ -189,6 +189,10 @@ template <addressing_mode A> struct split_register {
 // data width           -> ::WIDTH
 // (max) block length   -> ::BLOCK_LENGTH
 template <transfer_mode D> struct transfer_spec {};
+// DISABLED
+template <>
+struct transfer_spec<transfer_mode::DISABLED>
+    : transfer_spec_impl::data<char, 0> {};
 // D08_O
 template <>
 struct transfer_spec<transfer_mode::D08_O>

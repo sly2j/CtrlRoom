@@ -47,17 +47,15 @@ template <> struct extra_properties<submodel::V812> {
 // supported modes (addressing/write):
 //      * A24/D16
 //      * A32/D16
-//      * A32/D32
 // board class derives from this class to generate a compile time
 // error if an invalid mode is attempted (rather than waiting for
 // bus errors)
 template <addressing_mode A, transfer_mode D>
 struct validate_mode {
   static_assert((A == addressing_mode::A24 && D == transfer_mode::D16) ||
-                    (A == addressing_mode::A32 && D == transfer_mode::D16) ||
-                    (A == addressing_mode::A32 && D == transfer_mode::D32),
+                    (A == addressing_mode::A32 && D == transfer_mode::D16),
                 "Invalid mode for discriminator board, "
-                "only A24/D16, A32/D16 and A32/D32 supported");
+                "only A24/D16 and A32/D16 supported");
 };
 
 // instructions the DISCRIMINATOR knows over VME (see manual for explanation)

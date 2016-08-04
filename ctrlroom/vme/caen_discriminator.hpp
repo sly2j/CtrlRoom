@@ -73,6 +73,7 @@ public:
   using address_type = typename base_type::address_type;
   using base_type::name;
   using base_type::conf;
+  using base_type::write;
 
   board(const std::string& identifier, const ptree& settings,
         std::shared_ptr<master_type>& master);
@@ -109,7 +110,7 @@ board<Master, M, A, D>::board(const std::string& identifier,
   data_type inhibit_pattern = 0x0; // default: everything inhibited
   for (int ich = 0; ich < N_CHANNELS; ++ich) {
     char chkey[1024];
-    snprintf(chkey, 2014, "%s/%s%02i", THRESHOLD_KEY, CHANNEL_KEY_ROOT, ich);
+    snprintf(chkey, 2014, "%s.%s%02i", THRESHOLD_KEY, CHANNEL_KEY_ROOT, ich);
     const auto pthresh = conf().template get_optional<double>(chkey);
     if (pthresh) {
       // remember, thresholds are negative numbers!
@@ -121,7 +122,8 @@ board<Master, M, A, D>::board(const std::string& identifier,
       // convert to a 16 bit pattern
       const data_type thresh = static_cast<data_type>(fabs(*pthresh));
       // set the threshold on the board
-      write(instructions::THRESHOLD[ich], thresh);
+      const auto th = instructions::THRESHOLD;
+      write(th[ich], thresh);
       // update the bitmask
       inhibit_pattern |= CHANNEL_MASK[ich];
     }
