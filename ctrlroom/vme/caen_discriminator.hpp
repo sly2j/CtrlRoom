@@ -123,6 +123,7 @@ board<Master, M, A, D>::board(const std::string& identifier,
       const data_type thresh = static_cast<data_type>(fabs(*pthresh));
       // set the threshold on the board
       const auto th = instructions::THRESHOLD;
+      std::cout << ich << " " << th[ich] << " " << thresh << std::endl;
       write(th[ich], thresh);
       // update the bitmask
       inhibit_pattern |= CHANNEL_MASK[ich];
@@ -130,6 +131,7 @@ board<Master, M, A, D>::board(const std::string& identifier,
   }
   // set the inhibit mask
   LOG_JUNK(name(), "Setting the trigger inhibit mask");
+  std::cout << "inhibit_pattern: " << inhibit_pattern << std::endl;
   write(instructions::PATTERN_INHIBITOR, inhibit_pattern);
 
   // set the output signal width (trigger window)
@@ -138,6 +140,7 @@ board<Master, M, A, D>::board(const std::string& identifier,
   if (output_width > MAX_OUTPUT_WIDTH || output_width < MIN_OUTPUT_WIDTH) {
     throw conf().value_error(OUTPUT_WIDTH_KEY, std::to_string(output_width));
   }
+  std::cout << "OW: " << output_width << std::endl;
   write(instructions::OUTPUT_WIDTH_0_7, output_width);
   write(instructions::OUTPUT_WIDTH_8_15, output_width);
 
@@ -150,9 +153,10 @@ board<Master, M, A, D>::board(const std::string& identifier,
   }
   write(instructions::MAJORITY_THRESHOLD,
         static_cast<data_type>(round((maj * 50 - 25) / 4)));
+  std::cout << static_cast<data_type>(round((maj * 50 - 25) / 4)) << std::endl;
 
-  // all done!
-  LOG_JUNK(name(), "board initialized");
+      // all done!
+      LOG_JUNK(name(), "board initialized");
 }
 
 template <class Master, submodel M, addressing_mode A, transfer_mode D>
